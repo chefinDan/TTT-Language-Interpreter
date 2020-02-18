@@ -8,8 +8,10 @@ data Value =
   deriving (Eq, Show)
 --  | L [Value]
 
+type Function = Fn a
+
 data Result = Valid Value | Error [String] | Nil
-  deriving Show
+  deriving (Show, Eq)
 
 type List = [Value]
 type Name = String
@@ -41,6 +43,7 @@ parseOutput :: (Context, Result) -> IO ()
 parseOutput (_, Valid v) = print v
 parseOutput (_, Error e) = putStrLn (concat e)
 
+
 eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
@@ -61,6 +64,22 @@ eval c (Assign s ex) =
         where c'' = Data.HashMap.Strict.delete s c'
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
+--Equality
+eval c (Equ l r)
+  | l' == r' = (c'', Valid (I 1))
+  | otherwise = (c'', Valid (I 0))
+    where (c', l') = eval c l
+          (c'', r') = eval c' r
+--If/Else
+eval c (If cnd et ef) =
+ let (c', r) = eval c cnd
+  in case r of
+    Valid (I 0) -> foldExpressions c' ef
+    Valid (F 0) -> foldExpressions c' ef
+    Valid (S "") -> foldExpressions c' ef
+    Nil -> foldExpressions c' ef
+    Error s -> (c', Error (["Error while evaluating If condition.\n"] ++ Prelude.map ("  " ++) s))
+    _ -> foldExpressions c' et
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (F l)) (Val (F r))) = (c, Valid (F (l + r))) -- Float + Float
@@ -151,6 +170,7 @@ run c (Fn n e) =
   let c' = Data.HashMap.Strict.insert "main" (Fn n e) c
       (_, r) = call c' "main" []
       in r
+run _ _ =  Error ["Could not launch program: second argument to run must be a function.\n"]
 
 emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
