@@ -8,8 +8,6 @@ data Value =
   deriving (Eq, Show)
 --  | L [Value]
 
-type Function = Fn a
-
 data Result = Valid Value | Error [String] | Nil
   deriving (Show, Eq)
 
@@ -26,7 +24,7 @@ data Expression =
   | Multiply Expression Expression
   | Divide Expression Expression
   | Index Expression List
-  | AssignIdx Expression List
+  | AssignIdx Expression Expression List
   | Append Expression List
   | Equ Expression Expression
   | While Expression [Expression]
