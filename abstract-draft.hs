@@ -119,6 +119,13 @@ eval c (Add l r) =
     (Valid a, Valid b) -> eval c'' (Add (Val a) (Val b))
     where e = ["Invalid operands to add:\n"]
 
+-- Division
+eval c (Divide _ (Val (I 0))) = (c, Error ["Denominator cannot be 0"])
+eval c (Divide (Val (I n1)) (Val (I n2))) = (c, Valid (I (n1 `div` n2)))
+eval c (Divide (Val (S s1)) _) = (c, Error ["Cannot divide string"])
+eval c (Divide _ (Val (S s1))) = (c, Error ["Cannot divide string"])
+
+
 printError :: String -> Result
 printErrror = undefined S
 
