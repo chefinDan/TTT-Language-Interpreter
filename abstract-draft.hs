@@ -120,7 +120,7 @@ eval c (Add l r) =
     where e = ["Invalid operands to add:\n"]
 
 printError :: String -> Result
-printErrror = undefined S
+printError = undefined
 
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0))  = False
