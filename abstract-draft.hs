@@ -72,7 +72,7 @@ eval c (Assign s ex) =
     case val of
       (c', Valid v) -> (c'', Valid v)
         where c'' = Data.HashMap.Strict.insert s v c'
-      (c', Error x) -> (c', Error (["Could not assign non-value to variable" ++ s ++ ".\n"] ++ Prelude.map ("  " ++) x))
+      (c', Error x) -> (c', Error (["Could not assign non-value to variable " ++ s ++ ".\n"] ++ Prelude.map ("  " ++) x))
       (c', Nil)     -> (c'', Nil)
         where c'' = Data.HashMap.Strict.delete s c'
 --Calling a function.  Meat below in function def.
@@ -113,6 +113,7 @@ eval c (Add (Val (F l)) (Val (F r))) = (c, Valid (F (l + r))) -- Float + Float
 eval c (Add (Val (F l)) (Val (I r))) = (c, Valid (F (l + fromIntegral r))) -- Float + Int
 eval c (Add (Val (I l)) (Val (F r))) = (c, Valid (F (fromIntegral l + r))) -- Int + Float
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
+eval c (Add (Val _) (Val _))         = (c, Error ["Invalid operands to add.\n"])        
 eval c (Add l r) =
   let (c', l')  = eval c l
       (c'', r') = eval c' r
@@ -211,6 +212,9 @@ true = Valid (I 1)
 
 false :: Result
 false = Nil
+
+increment :: Name -> Expression
+increment n = Assign n (Add (Var n) (Val (I 1)))
 
 --LIBRARY and PROGRAM LAUNCHING
 
