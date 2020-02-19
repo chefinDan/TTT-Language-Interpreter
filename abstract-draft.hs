@@ -5,8 +5,20 @@ data Value =
   | F Float
   | S String
   | Fn [Name] [Expression]
-  deriving (Eq, Show)
---  | L [Value]
+  deriving (Show)
+
+--We hand define Eq to ensure our fungibility between float and int is handled, and
+--to deal with Functions.
+instance Eq Value where
+  (I x) == (I y) = x == y
+  (F x) == (F y) = x == y
+  (I x) == (F y) = fromIntegral x == y
+  (F x) == (I y) = x == fromIntegral y
+  (S x) == (S y) = x == y
+--Because the only way of retrieving a function in Value form is by consulting the
+--uniqueness enforcing Context, we can safely just compare names.
+  (Fn x _) == (Fn y _) = x == y
+  _ == _ = False
 
 data Result = Valid Value | Error [String] | Nil
   deriving (Show, Eq)
@@ -31,6 +43,9 @@ data Expression =
   | If Expression [Expression] [Expression]
   | Print Expression
   | Assign String Expression
+  | Or Expression Expression
+  | And Expression Expression
+  | Not Expression
   deriving(Show, Eq)
 
 type Context = HashMap Name Value
@@ -58,26 +73,40 @@ eval c (Assign s ex) =
       (c', Valid v) -> (c'', Valid v)
         where c'' = Data.HashMap.Strict.insert s v c'
       (c', Error x) -> (c', Error (["Could not assign non-value to variable" ++ s ++ ".\n"] ++ Prelude.map ("  " ++) x))
-      (c', Nil) -> (c'', Nil)
+      (c', Nil)     -> (c'', Nil)
         where c'' = Data.HashMap.Strict.delete s c'
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
 eval c (Equ l r)
-  | l' == r' = (c'', Valid (I 1))
-  | otherwise = (c'', Valid (I 0))
-    where (c', l') = eval c l
+  | l' == r'  = (c'', true)
+  | otherwise = (c'', false)
+    where (c', l')  = eval c l
           (c'', r') = eval c' r
+--Logical Operators
+eval c (Or e1 e2) =
+  let (c', l)  = eval c e1
+      (c'', r) = eval c' e2
+  in case (extractTruth l, extractTruth r) of
+    (False, False) -> (c'', false)
+    _              -> (c'', true)
+eval c (And e1 e2) =
+  let (c', l)  = eval c e1
+      (c'', r) = eval c' e2
+  in case (extractTruth l, extractTruth r) of
+    (True, True) -> (c'', true)
+    _            -> (c'', false)
+eval c (Not e) =
+  let (c', r) = eval c e
+  in if extractTruth r 
+    then (c', false)
+    else (c', true)
 --If/Else
 eval c (If cnd et ef) =
  let (c', r) = eval c cnd
-  in case r of
-    Valid (I 0) -> foldExpressions c' ef
-    Valid (F 0) -> foldExpressions c' ef
-    Valid (S "") -> foldExpressions c' ef
-    Nil -> foldExpressions c' ef
-    Error s -> (c', Error (["Error while evaluating If condition.\n"] ++ Prelude.map ("  " ++) s))
-    _ -> foldExpressions c' et
+  in if extractTruth r
+    then foldExpressions c' et
+    else foldExpressions c' ef
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (F l)) (Val (F r))) = (c, Valid (F (l + r))) -- Float + Float
@@ -85,7 +114,7 @@ eval c (Add (Val (F l)) (Val (I r))) = (c, Valid (F (l + fromIntegral r))) -- Fl
 eval c (Add (Val (I l)) (Val (F r))) = (c, Valid (F (fromIntegral l + r))) -- Int + Float
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
 eval c (Add l r) =
-  let (c', l') = eval c l
+  let (c', l')  = eval c l
       (c'', r') = eval c' r
   in case (l', r') of
     (Nil, y) -> (c'', y)
@@ -95,6 +124,24 @@ eval c (Add l r) =
     (_, Error x) -> (c'', Error (e ++ Prelude.map ("   " ++) x))
     (Valid a, Valid b) -> eval c'' (Add (Val a) (Val b))
     where e = ["Invalid operands to add:\n"]
+
+
+extractTruth :: Result -> Bool
+extractTruth (Valid (I 0))  = False
+extractTruth (Valid (F 0))  = False
+extractTruth (Valid (S "")) = False
+extractTruth Nil            = False
+extractTruth (Error _)      = False
+_                           = True
+
+
+logicalOp :: (Result->Result->Bool) -> Context -> Expression -> Expression -> (Context, Result)
+logicalOp fn c e1 e2 =
+  let (c', l)  = eval c e1
+      (c'', r) = eval c' e2 in
+        case fn l r of
+         True  -> (c'', Valid (I 1))
+         False -> (c'', Nil)
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -109,7 +156,7 @@ foldExpressions c (e:es) =
   let (c', r) = eval c e in
     case es of
       [] -> (c', r)
-      _ -> foldExpressions c' es
+      _  -> foldExpressions c' es
 foldExpressions c [] = (c, Nil)
 
 {- valueIsFunc and transferFuncDefs are used to filter out everything except
@@ -158,6 +205,14 @@ call c fname e =
       _ -> (c, Error ["Function call to" ++ fname ++ "failed: name is bound to non-function variable.\n"])
 
 -- SUGAR
+
+true :: Result
+true = Valid (I 1)
+
+false :: Result
+false = Nil
+
+--LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
 buildLibrary c [] = c
