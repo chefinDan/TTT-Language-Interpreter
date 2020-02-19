@@ -1,4 +1,5 @@
 import Data.HashMap.Strict
+import Debug.Trace
 
 data Value =
     I Int
@@ -16,7 +17,7 @@ instance Eq Value where
   (Fn x _) == (Fn y _) = x == y
   _ == _ = False
 
-data Result = Valid Value | Error [String] | Nil
+data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
 type List = [Value]
@@ -38,7 +39,7 @@ data Expression =
   | While Expression [Expression]
   | If Expression [Expression] [Expression]
   | Print Expression
-  | Assign String Expression
+  | Assign Name Expression
   | Or Expression Expression
   | And Expression Expression
   | Not Expression
@@ -48,18 +49,13 @@ type Context = HashMap Name Value
 
 type Domain = Context -> Expression -> (Context, Result)
 
-parseOutput :: (Context, Result) -> IO ()
-parseOutput (_, Valid v) = print v
-parseOutput (_, Error e) = putStrLn (concat e)
-
-
 eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
 eval c (Val v) = (c, Valid v)
 eval c (Var s) = case Data.HashMap.Strict.lookup s c of
   Just x  -> (c, Valid x)
-  Nothing -> (c, Error ["Undefined reference to variable " ++ s ++ ".\n"])
+  Nothing -> (c, printError ("Undefined reference to variable " ++ s ++ ".") )
 --Assignment of variable.  Assigning an Error produces another Error, assigning
 --a real value binds the name to that value in the Context, and assigning Nil
 --destroys a binding, if it exists.
@@ -68,7 +64,7 @@ eval c (Assign s ex) =
     case val of
       (c', Valid v) -> (c'', Valid v)
         where c'' = Data.HashMap.Strict.insert s v c'
-      (c', Error x) -> (c', Error (["Could not assign non-value to variable " ++ s ++ ".\n"] ++ Prelude.map ("  " ++) x))
+      (c', Error) -> (c', printError ("Could not assign non-value to variable " ++ s ++ "."))
       (c', Nil)     -> (c'', Nil)
         where c'' = Data.HashMap.Strict.delete s c'
 --Calling a function.  Meat below in function def.
@@ -106,27 +102,29 @@ eval c (If cnd et ef) =
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
-eval c (Add (Val _) (Val _))         = (c, Error ["Invalid operands to add.\n"])        
+eval c (Add (Val _) (Val _))         = (c, printError "Invalid operands to add.")        
 eval c (Add l r) =
   let (c', l')  = eval c l
       (c'', r') = eval c' r
   in case (l', r') of
     (Nil, y) -> (c'', y)
     (x, Nil) -> (c'', x)
-    (Error x, Error y) -> (c, Error (e ++ Prelude.map ("   " ++) x ++ Prelude.map ("   " ++) y ))
-    (Error x, _) -> (c'', Error (e ++ Prelude.map ("   " ++) x))
-    (_, Error x) -> (c'', Error (e ++ Prelude.map ("   " ++) x))
+    (Error, _) -> (c'', printError e)
+    (_, Error) -> (c'', printError e)
     (Valid a, Valid b) -> eval c'' (Add (Val a) (Val b))
-    where e = ["Invalid operands to add:\n"]
+    where e = "Invalid operands to add."
 
+
+--The trace thing for error reporting comes from: https://stackoverflow.com/questions/42700743/how-can-i-print-the-parameters-of-a-function-before-evaluation-in-haskell
 printError :: String -> Result
-printError = undefined
+printError s | trace s False = undefined
+printError s = Error
 
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0))  = False
 extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
-extractTruth (Error _)      = False
+extractTruth Error      = False
 _                           = True
 
 {- foldExpressions is the basic function for crunching a series of expressions
@@ -187,8 +185,8 @@ call c fname e =
         let (c', scope) = bindArguments(c, transferFuncDefs c) params e
             (scope', r) = foldExpressions scope body
              in (Data.HashMap.Strict.union (transferFuncDefs scope') c', r)
-      Nothing               -> (c, Error ["Function call to " ++ fname ++ " failed: no such function.\n"])
-      _                     -> (c, Error ["Function call to" ++ fname ++ "failed: name is bound to non-function variable.\n"])
+      Nothing               -> (c, printError ("Function call to " ++ fname ++ " failed: no such function.") )
+      _                     -> (c, printError ("Function call to" ++ fname ++ "failed: name is bound to non-function variable.") )
 
 -- SUGAR
 
@@ -212,7 +210,7 @@ run c (Fn n e) =
   let c' = Data.HashMap.Strict.insert "main" (Fn n e) c
       (_, r) = call c' "main" []
       in r
-run _ _ =  Error ["Could not launch program: second argument to run must be a function.\n"]
+run _ _ =  printError "Could not launch program: second argument to run must be a function."
 
 emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
