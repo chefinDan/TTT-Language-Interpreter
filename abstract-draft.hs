@@ -2,7 +2,6 @@ import Data.HashMap.Strict
 
 data Value =
     I Int
-  | F Float
   | S String
   | Fn [Name] [Expression]
   deriving (Show)
@@ -11,9 +10,6 @@ data Value =
 --to deal with Functions.
 instance Eq Value where
   (I x) == (I y) = x == y
-  (F x) == (F y) = x == y
-  (I x) == (F y) = fromIntegral x == y
-  (F x) == (I y) = x == fromIntegral y
   (S x) == (S y) = x == y
 --Because the only way of retrieving a function in Value form is by consulting the
 --uniqueness enforcing Context, we can safely just compare names.
@@ -62,7 +58,7 @@ eval :: Domain
 --if an attempt is made to evaluate an undefined variable.
 eval c (Val v) = (c, Valid v)
 eval c (Var s) = case Data.HashMap.Strict.lookup s c of
-  Just x -> (c, Valid x)
+  Just x  -> (c, Valid x)
   Nothing -> (c, Error ["Undefined reference to variable " ++ s ++ ".\n"])
 --Assignment of variable.  Assigning an Error produces another Error, assigning
 --a real value binds the name to that value in the Context, and assigning Nil
@@ -109,9 +105,6 @@ eval c (If cnd et ef) =
     else foldExpressions c' ef
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
-eval c (Add (Val (F l)) (Val (F r))) = (c, Valid (F (l + r))) -- Float + Float
-eval c (Add (Val (F l)) (Val (I r))) = (c, Valid (F (l + fromIntegral r))) -- Float + Int
-eval c (Add (Val (I l)) (Val (F r))) = (c, Valid (F (fromIntegral l + r))) -- Int + Float
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
 eval c (Add (Val _) (Val _))         = (c, Error ["Invalid operands to add.\n"])        
 eval c (Add l r) =
@@ -126,23 +119,15 @@ eval c (Add l r) =
     (Valid a, Valid b) -> eval c'' (Add (Val a) (Val b))
     where e = ["Invalid operands to add:\n"]
 
+printError :: String -> Result
+printErrror = undefined S
 
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0))  = False
-extractTruth (Valid (F 0))  = False
 extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
 extractTruth (Error _)      = False
 _                           = True
-
-
-logicalOp :: (Result->Result->Bool) -> Context -> Expression -> Expression -> (Context, Result)
-logicalOp fn c e1 e2 =
-  let (c', l)  = eval c e1
-      (c'', r) = eval c' e2 in
-        case fn l r of
-         True  -> (c'', Valid (I 1))
-         False -> (c'', Nil)
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -183,7 +168,7 @@ bindArguments (ps, fs) (n:ns) (e:es) =
   let (ps', r) = eval ps e
     in case r of
       Valid v -> bindArguments (ps', Data.HashMap.Strict.insert n v fs) ns es
-      _ -> bindArguments (ps', fs) ns es
+      _       -> bindArguments (ps', fs) ns es
 
 {- call calls a function.  The general idea is that the list of expressions provided
 as arguments is evaluated, and bound pairwise with the function's parameter name list
@@ -202,8 +187,8 @@ call c fname e =
         let (c', scope) = bindArguments(c, transferFuncDefs c) params e
             (scope', r) = foldExpressions scope body
              in (Data.HashMap.Strict.union (transferFuncDefs scope') c', r)
-      Nothing -> (c, Error ["Function call to " ++ fname ++ " failed: no such function.\n"])
-      _ -> (c, Error ["Function call to" ++ fname ++ "failed: name is bound to non-function variable.\n"])
+      Nothing               -> (c, Error ["Function call to " ++ fname ++ " failed: no such function.\n"])
+      _                     -> (c, Error ["Function call to" ++ fname ++ "failed: name is bound to non-function variable.\n"])
 
 -- SUGAR
 
