@@ -27,10 +27,8 @@ type Name = String
 data Expression =
     Val Value
   | Var Name
-  | Define Name [Name] [Expression] --Define a function.  Name of function, parameters, code.
   | Call Name [Expression] --Call a function.  Name of function, arguments.
   | Add Expression Expression
-  -- | Subtract Expression Expression --Can be sugar using negate.
   | Multiply Expression Expression
   | Divide Expression Expression
   | Index Expression List
