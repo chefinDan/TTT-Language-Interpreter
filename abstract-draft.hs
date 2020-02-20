@@ -36,8 +36,8 @@ data Expression =
   | AssignIdx Expression Expression List
   | Append Expression List
   | Equ Expression Expression
-  | While Expression [Expression]
   | If Expression [Expression] [Expression]
+  | While Expression [Expression]
   | Print Expression
   | Assign Name Expression
   | Or Expression Expression
@@ -124,8 +124,8 @@ extractTruth :: Result -> Bool
 extractTruth (Valid (I 0))  = False
 extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
-extractTruth Error      = False
-_                           = True
+extractTruth Error          = False
+extractTruth _              = True
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -199,6 +199,11 @@ false = Nil
 increment :: Name -> Expression
 increment n = Assign n (Add (Var n) (Val (I 1)))
 
+while :: Context -> Expression -> [Expression] -> (Context, Result)
+while c cnd es = eval c (If cnd es [])
+
+whileTest = while library (Not (Equ (Var "test") (Var "test2"))) [(Assign "test" (Add (Var "test2") (Val (I 1))))]
+
 --LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
@@ -216,7 +221,7 @@ emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
-library = buildLibrary emptyContext [("doubler", doubler)]
+library = buildLibrary emptyContext [("doubler", doubler), ("test", I 0), ("test2", I 4)]
 
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
