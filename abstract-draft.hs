@@ -99,12 +99,16 @@ eval c (If cnd et ef) =
   in if extractTruth r
     then foldExpressions c' et
     else foldExpressions c' ef
+
 --While 
 eval c (While cnd es) =
-  let (c', r) = eval c cnd
+ let (c', r) = eval c cnd
   in if extractTruth r
-    then eval c' (While cnd es)
-    else (c', r)  
+    then let (c'', r') = (foldExpressions c' es) 
+          in eval c'' (While cnd es)
+    else (c', r)
+
+    -- if test c s then stmt (While c b) (stmt b s) else s
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
@@ -230,3 +234,6 @@ library = buildLibrary emptyContext [("doubler", doubler), ("test", I 0), ("test
 
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
+
+whileTest :: (Context,Result)
+whileTest = eval library (While (Not (Equ (Var "test") (Var "test2"))) [Assign "test" (Add (Var "test") (Val (I 1)))])
