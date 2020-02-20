@@ -119,8 +119,8 @@ eval c (Add l r) =
 -- Division
 eval c (Divide _ (Val (I 0))) = (c, printError "Denominator cannot be 0")
 eval c (Divide (Val (I n1)) (Val (I n2))) = (c, Valid (I (n1 `div` n2)))
-eval c (Divide (Val (S s1)) _) = (c, printError "Cannot divide string")
-eval c (Divide _ (Val (S s1))) = (c, printError "Cannot divide string")
+eval c (Divide (Val (S s)) (Val (I n))) = (c, Valid (substring n (S s)))
+eval c (Divide _ (Val (S s))) = (c, printError "Cannot divide string")
 eval c (Divide (Val _) (Val _)) = (c, printError "Invalid operands to divide")
 eval c (Divide l r) = 
   let (c', l')  = eval c l 
@@ -132,6 +132,11 @@ eval c (Divide l r) =
       (_, Error) -> (c, printError "Invalid operands to divide")
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
 
+
+-- substring: for String division
+substring :: Int -> Value -> Value
+substring x (S text) = S (take n (text))
+  where n = (length text) `div` x
 --The trace thing for error reporting comes from: https://stackoverflow.com/questions/42700743/how-can-i-print-the-parameters-of-a-function-before-evaluation-in-haskell
 printError :: String -> Result
 printError s | trace s False = undefined
