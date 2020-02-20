@@ -252,13 +252,10 @@ increment n = Assign n (Add (Var n) (Val (I 1) ) )
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
-<<<<<<< HEAD
 define :: Name -> [Name] -> [Expression] -> Expression
 define n ps es = Assign n (Val (Fn ps es))
 
 
-=======
->>>>>>> 22554e4dbaf972ed0ff40147c2a75762f826d4bf
 --LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
@@ -277,7 +274,7 @@ emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
 library = buildLibrary emptyContext [("doubler", doubler)
-                                    ,("fib", fib)
+                                    ,("fib", fib) 
                                     ]
 
 doubler :: Value
