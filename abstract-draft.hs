@@ -1,5 +1,6 @@
 import Data.HashMap.Strict
 import Debug.Trace
+import Prelude hiding (subtract)
 
 data Value =
     I Int
@@ -113,17 +114,38 @@ eval c (While cnd es) =
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
 eval c (Add (Val _) (Val _))         = (c, printError "Invalid operands to add.")        
-eval c (Add l r) =
+eval c (Add l r)                     =
   let (c', l')  = eval c l
       (c'', r') = eval c' r
   in case (l', r') of
-    (Nil, y) -> (c'', y)
-    (x, Nil) -> (c'', x)
-    (Error, _) -> (c'', printError e)
-    (_, Error) -> (c'', printError e)
+    (Nil, y)           -> (c'', y)
+    (x, Nil)           -> (c'', x)
+    (Error, _)         -> (c'', printError e)
+    (_, Error)         -> (c'', printError e)
     (Valid a, Valid b) -> eval c'' (Add (Val a) (Val b))
     where e = "Invalid operands to add."
-
+--Multiplication
+eval c (Multiply (Val (I l)) (Val (I r))) = (c, Valid (I (l * r))) -- Int * Int
+--Multiplying a string by an integer should, because it's fun, return that string concatenated that many times.
+eval c (Multiply (Val (S l)) (Val (I r)))
+  | r < 0     = (c, printError "Cannot multiply a string by a negative number.")
+  | r == 0    = (c, Valid (S ""))
+  | r == 1    = (c, Valid (S l))
+  | otherwise = (c', Valid (S (l ++ l')) )
+     where (c', Valid (S l') ) = eval c (Multiply (Val(S l)) (Val (I (r - 1) )))
+--Rather than repeat the boilerplate, we'll just define I * S as S * I.
+eval c (Multiply (Val (I l)) (Val (S r)))      =  eval c (Multiply (Val (S r)) (Val (I l)))
+eval c (Multiply (Val _) (Val _))              = (c, printError "Invalid operands to multiply.")        
+eval c (Multiply l r)                          =
+  let (c', l')  = eval c l
+      (c'', r') = eval c' r
+  in case (l', r') of
+    (Nil, y)           -> (c'', y)
+    (x, Nil)           -> (c'', x)
+    (Error, _)         -> (c'', printError e)
+    (_, Error)         -> (c'', printError e)
+    (Valid a, Valid b) -> eval c'' (Multiply (Val a) (Val b))
+    where e = "Invalid operands to multiply."
 
 
 -- Division
@@ -230,7 +252,10 @@ false :: Result
 false = Nil
 
 increment :: Name -> Expression
-increment n = Assign n (Add (Var n) (Val (I 1)))
+increment n = Assign n (Add (Var n) (Val (I 1) ) )
+
+subtract :: Expression -> Expression -> Expression
+subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
 define :: Context -> Name -> [Name] -> [Expression] -> (Context, Result)
 define = undefined
@@ -252,10 +277,39 @@ emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
+<<<<<<< HEAD
 library = buildLibrary emptyContext [("doubler", doubler), ("test", I 0), ("test2", I 4)]
+=======
+library = buildLibrary emptyContext [("doubler", doubler)
+                                    ,("fib", fib)
+                                    ]
+>>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
 
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
+<<<<<<< HEAD
 whileTest :: (Context,Result)
 whileTest = eval library (While (Not (Equ (Var "test") (Var "test2"))) [Assign "test" (Add (Var "test") (Val (I 1)))])
+=======
+fib :: Value
+fib = Fn ["n"]
+  [
+    If (Equ (Var "n") (Val (I 0)))
+    [--then
+      Val (I 0)
+    ]
+    [--else
+      If (Equ (Var "n") (Val (I 1)))
+      [--then
+        Val (I 1)
+      ]
+      [--else
+        Add (Call "fib" [subtract (Var "n") (Val (I 1))]) (Call "fib" [subtract (Var "n") (Val (I 2))])
+      ]
+    ]
+  ]
+
+runFibonacci :: Int -> Result
+runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)] ])
+>>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
