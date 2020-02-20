@@ -265,3 +265,6 @@ fib = Fn ["n"]
       ]
     ]
   ]
+
+runFibonacci :: Int -> Result
+runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)] ])
