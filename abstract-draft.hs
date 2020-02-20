@@ -124,7 +124,7 @@ extractTruth :: Result -> Bool
 extractTruth (Valid (I 0))  = False
 extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
-extractTruth Error      = False
+extractTruth Error          = False
 _                           = True
 
 {- foldExpressions is the basic function for crunching a series of expressions
