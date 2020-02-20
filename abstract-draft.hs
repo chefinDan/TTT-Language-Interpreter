@@ -35,6 +35,7 @@ data Expression =
   | Index Expression List
   | AssignIdx Expression Expression List
   | Append Expression List
+  | Prepend Expression List
   | Equ Expression Expression
   | While Expression [Expression]
   | If Expression [Expression] [Expression]
@@ -44,6 +45,28 @@ data Expression =
   | And Expression Expression
   | Not Expression
   deriving(Show, Eq)
+parseContextOut::Expression->[Value]
+parseContextOut a = case foldExpressions emptyContext [a] of
+                    (b, Valid c) -> [c] 
+                    _ -> []
+
+findDupsAppend::Expression->List->List
+findDupsAppend e [] = []
+findDupsAppend e (x:xs) = case foldExpressions emptyContext [e] of  
+                    ( y , Valid a) -> if a == x then xs else [x] ++ (findDupsAppend e xs)
+                    _ -> [x] ++ (findDupsAppend e xs)
+
+appendList::Expression -> List
+appendList (Append e xs) = findDupsAppend e xs ++ (parseContextOut e)
+appendList _ = []
+findDupsPrepend::Expression->List->List
+findDupsPrepend e [] = []
+findDupsPrepend e (x:xs) = case foldExpressions emptyContext [e] of  
+                    ( y , Valid a) -> if a == x then xs else  (findDupsPrepend e xs) ++ [x] 
+                    _ ->  (findDupsPrepend e xs) ++ [x]
+prependList::Expression -> List
+prependList (Prepend e xs) =  (parseContextOut e) ++ (findDupsPrepend e xs) 
+prependList _ = []
 
 type Context = HashMap Name Value
 
