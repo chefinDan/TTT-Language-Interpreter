@@ -125,7 +125,8 @@ extractTruth (Valid (I 0))  = False
 extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
 extractTruth Error          = False
-extractTruth _              = True
+_                           = True
+
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
