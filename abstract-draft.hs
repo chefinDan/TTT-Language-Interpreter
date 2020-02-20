@@ -98,7 +98,6 @@ eval c (If cnd et ef) =
   in if extractTruth r
     then foldExpressions c' et
     else foldExpressions c' ef
-
 --While 
 eval c (While cnd es) =
  let (c', r) = eval c cnd
@@ -106,8 +105,6 @@ eval c (While cnd es) =
     then let (c'', r') = (foldExpressions c' es) 
           in eval c'' (While cnd es)
     else (c', r)
-
-    -- if test c s then stmt (While c b) (stmt b s) else s
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
@@ -255,10 +252,13 @@ increment n = Assign n (Add (Var n) (Val (I 1) ) )
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
+<<<<<<< HEAD
 define :: Name -> [Name] -> [Expression] -> Expression
 define n ps es = Assign n (Val (Fn ps es))
 
 
+=======
+>>>>>>> 22554e4dbaf972ed0ff40147c2a75762f826d4bf
 --LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
