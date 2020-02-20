@@ -149,21 +149,21 @@ extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
 
-grabIndex :: Expression-> List-> Result
-grabIndex a [] = Nil
-grabIndex (Val (I a)) (x:xs) = case x of 
-                            I i -> if (i == a) then (Valid (I a)) else grabIndex (Val (I a)) xs
-                            _ -> grabIndex(Val (I a)) xs
-grabIndex (Val (S a)) (x:xs) = case x of 
-                            S i -> if (i == a) then (Valid (S a)) else grabIndex (Val (S a)) xs
-                            _ -> grabIndex(Val (S a)) xs
-grabIndex (Val (Fn a e)) (x:xs) = case x of 
-                            Fn i exp -> if ((i == a) && ((foldExpressions emptyContext exp) == (foldExpressions emptyContext e))) then (Valid (Fn a e)) else grabIndex (Val (Fn a e)) xs
-                            _ -> grabIndex(Val (Fn a e)) xs
-grabIndex a (x:xs)              = case (foldExpressions emptyContext [a]) of 
+grabIndex :: Expression-> Result
+grabIndex (Index a []) = Nil
+grabIndex (Index (Val (I a)) (x:xs)) = case x of 
+                            I i -> if (i == a) then (Valid (I a)) else grabIndex (Index (Val (I a)) xs)
+                            _ -> grabIndex (Index (Val (I a)) xs)
+grabIndex (Index (Val (S a)) (x:xs)) = case x of 
+                            S i -> if (i == a) then (Valid (S a)) else grabIndex (Index (Val (S a)) xs)
+                            _ -> grabIndex (Index (Val (S a)) xs)
+grabIndex (Index (Val (Fn a e)) (x:xs)) = case x of 
+                            Fn i exp -> if ((i == a) && ((foldExpressions emptyContext exp) == (foldExpressions emptyContext e))) then (Valid (Fn a e)) else grabIndex (Index (Val (Fn a e)) xs)
+                            _ -> grabIndex (Index (Val (Fn a e)) xs)
+grabIndex (Index a (x:xs))              = case (foldExpressions emptyContext [a]) of 
                                   (c , Error) -> Error
                                   (c , Nil)   -> Nil
-                                  (c ,Valid b) -> if (b == x) then Valid b else grabIndex a xs  
+                                  (c ,Valid b) -> if (b == x) then Valid b else grabIndex (Index a xs)  
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
