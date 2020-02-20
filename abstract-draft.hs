@@ -99,6 +99,12 @@ eval c (If cnd et ef) =
   in if extractTruth r
     then foldExpressions c' et
     else foldExpressions c' ef
+--While 
+eval c (While cnd es) =
+  let (c', r) = eval c cnd
+  in if extractTruth r
+    then eval c' (While cnd es)
+    else (c', r)  
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
@@ -200,10 +206,8 @@ false = Nil
 increment :: Name -> Expression
 increment n = Assign n (Add (Var n) (Val (I 1)))
 
-while :: Context -> Expression -> [Expression] -> (Context, Result)
-while c cnd es = eval c (If cnd es [])
-
-whileTest = while library (Not (Equ (Var "test") (Var "test2"))) [(Assign "test" (Add (Var "test2") (Val (I 1))))]
+define :: Context -> Name -> [Name] -> [Expression] -> (Context, Result)
+define = undefined
 
 --LIBRARY and PROGRAM LAUNCHING
 
