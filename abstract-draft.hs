@@ -149,6 +149,22 @@ extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
 
+grabIndex :: Expression-> List-> Result
+grabIndex a [] = Nil
+grabIndex (Val (I a)) (x:xs) = case x of 
+                            I i -> if (i == a) then (Valid (I a)) else grabIndex (Val (I a)) xs
+                            _ -> grabIndex(Val (I a)) xs
+grabIndex (Val (S a)) (x:xs) = case x of 
+                            S i -> if (i == a) then (Valid (S a)) else grabIndex (Val (S a)) xs
+                            _ -> grabIndex(Val (S a)) xs
+grabIndex (Val (Fn a e)) (x:xs) = case x of 
+                            Fn i exp -> if ((i == a) && ((foldExpressions emptyContext exp) == (foldExpressions emptyContext e))) then (Valid (Fn a e)) else grabIndex (Val (Fn a e)) xs
+                            _ -> grabIndex(Val (Fn a e)) xs
+grabIndex a (x:xs)              = case (foldExpressions emptyContext [a]) of 
+                                  (c , Error) -> Error
+                                  (c , Nil)   -> Nil
+                                  (c ,Valid b) -> if (b == x) then Valid b else grabIndex a xs  
+
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
 but intermediate results are basically rvalues and are discarded between lines; the
