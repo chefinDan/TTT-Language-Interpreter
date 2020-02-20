@@ -37,8 +37,8 @@ data Expression =
   | AssignIdx Expression Expression List
   | Append Expression List
   | Equ Expression Expression
-  | While Expression [Expression]
   | If Expression [Expression] [Expression]
+  | While Expression [Expression]
   | Print Expression
   | Assign Name Expression
   | Or Expression Expression
@@ -100,6 +100,13 @@ eval c (If cnd et ef) =
   in if extractTruth r
     then foldExpressions c' et
     else foldExpressions c' ef
+--While 
+eval c (While cnd es) =
+ let (c', r) = eval c cnd
+  in if extractTruth r
+    then let (c'', r') = (foldExpressions c' es) 
+          in eval c'' (While cnd es)
+    else (c', r)
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
@@ -170,6 +177,7 @@ extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
+
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
