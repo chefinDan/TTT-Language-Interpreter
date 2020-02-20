@@ -100,7 +100,6 @@ eval c (If cnd et ef) =
   in if extractTruth r
     then foldExpressions c' et
     else foldExpressions c' ef
-
 --While 
 eval c (While cnd es) =
  let (c', r) = eval c cnd
@@ -108,8 +107,6 @@ eval c (While cnd es) =
     then let (c'', r') = (foldExpressions c' es) 
           in eval c'' (While cnd es)
     else (c', r)
-
-    -- if test c s then stmt (While c b) (stmt b s) else s
 --Addition.
 eval c (Add (Val (I l)) (Val (I r))) = (c, Valid (I (l + r))) -- Int + Int
 eval c (Add (Val (S l)) (Val (S r))) = (c, Valid (S (l ++ r))) -- String + String
@@ -257,9 +254,6 @@ increment n = Assign n (Add (Var n) (Val (I 1) ) )
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
-define :: Context -> Name -> [Name] -> [Expression] -> (Context, Result)
-define = undefined
-
 --LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
@@ -277,21 +271,13 @@ emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
-<<<<<<< HEAD
-library = buildLibrary emptyContext [("doubler", doubler), ("test", I 0), ("test2", I 4)]
-=======
 library = buildLibrary emptyContext [("doubler", doubler)
                                     ,("fib", fib)
                                     ]
->>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
 
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
-<<<<<<< HEAD
-whileTest :: (Context,Result)
-whileTest = eval library (While (Not (Equ (Var "test") (Var "test2"))) [Assign "test" (Add (Var "test") (Val (I 1)))])
-=======
 fib :: Value
 fib = Fn ["n"]
   [
@@ -312,4 +298,3 @@ fib = Fn ["n"]
 
 runFibonacci :: Int -> Result
 runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)] ])
->>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
