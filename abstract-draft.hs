@@ -257,8 +257,9 @@ increment n = Assign n (Add (Var n) (Val (I 1) ) )
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
-define :: Context -> Name -> [Name] -> [Expression] -> (Context, Result)
-define = undefined
+define :: Name -> [Name] -> [Expression] -> Expression
+define n ps es = Assign n (Val (Fn ps es))
+
 
 --LIBRARY and PROGRAM LAUNCHING
 
@@ -277,21 +278,13 @@ emptyContext :: Context
 emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
-<<<<<<< HEAD
-library = buildLibrary emptyContext [("doubler", doubler), ("test", I 0), ("test2", I 4)]
-=======
 library = buildLibrary emptyContext [("doubler", doubler)
                                     ,("fib", fib)
                                     ]
->>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
 
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
-<<<<<<< HEAD
-whileTest :: (Context,Result)
-whileTest = eval library (While (Not (Equ (Var "test") (Var "test2"))) [Assign "test" (Add (Var "test") (Val (I 1)))])
-=======
 fib :: Value
 fib = Fn ["n"]
   [
@@ -312,4 +305,3 @@ fib = Fn ["n"]
 
 runFibonacci :: Int -> Result
 runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)] ])
->>>>>>> 2b3a5bc6bd73c876b976c09a0217771dfbb258e1
