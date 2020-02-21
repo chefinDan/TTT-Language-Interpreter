@@ -45,28 +45,28 @@ data Expression =
   | And Expression Expression
   | Not Expression
   deriving(Show, Eq)
-parseContextOut::Expression->[Value]
-parseContextOut a = case foldExpressions emptyContext [a] of
-                    (b, Valid c) -> [c] 
+parseContextOut::Context->Expression->[Value]
+parseContextOut c a = case foldExpressions c [a] of
+                    (b, Valid d) -> [d] 
                     _ -> []
 
-findDupsAppend::Expression->List->List
-findDupsAppend e [] = []
-findDupsAppend e (x:xs) = case foldExpressions emptyContext [e] of  
-                    ( y , Valid a) -> if a == x then xs else [x] ++ (findDupsAppend e xs)
-                    _ -> [x] ++ (findDupsAppend e xs)
+findDupsAppend::Context->Expression->List->List
+findDupsAppend c e [] = []
+findDupsAppend c e (x:xs) = case foldExpressions c [e] of  
+                    ( y , Valid a) -> if a == x then xs else [x] ++ (findDupsAppend c e xs)
+                    _ -> [x] ++ (findDupsAppend c e xs)
 
-appendList::Expression -> List
-appendList (Append e xs) = findDupsAppend e xs ++ (parseContextOut e)
-appendList _ = []
-findDupsPrepend::Expression->List->List
-findDupsPrepend e [] = []
-findDupsPrepend e (x:xs) = case foldExpressions emptyContext [e] of  
-                    ( y , Valid a) -> if a == x then xs else  (findDupsPrepend e xs) ++ [x] 
-                    _ ->  (findDupsPrepend e xs) ++ [x]
-prependList::Expression -> List
-prependList (Prepend e xs) =  (parseContextOut e) ++ (findDupsPrepend e xs) 
-prependList _ = []
+appendList::Context->Expression -> List
+appendList c (Append e xs) = findDupsAppend c e xs ++ (parseContextOut c e)
+appendList c _ = []
+findDupsPrepend::Context->Expression->List->List
+findDupsPrepend c e [] = []
+findDupsPrepend c e (x:xs) = case foldExpressions c [e] of  
+                    ( y , Valid a) -> if a == x then xs else  (findDupsPrepend c e xs) ++ [x] 
+                    _ ->  (findDupsPrepend c e xs) ++ [x]
+prependList::Context->Expression -> List
+prependList c (Prepend e xs) =  (parseContextOut c e) ++ (findDupsPrepend c e xs) 
+prependList c _ = []
 
 type Context = HashMap Name Value
 
@@ -172,21 +172,21 @@ extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
 
-grabIndex :: Expression-> Result
-grabIndex (Index a []) = Nil
-grabIndex (Index (Val (I a)) (x:xs)) = case x of 
-                            I i -> if (i == a) then (Valid (I a)) else grabIndex (Index (Val (I a)) xs)
-                            _ -> grabIndex (Index (Val (I a)) xs)
-grabIndex (Index (Val (S a)) (x:xs)) = case x of 
-                            S i -> if (i == a) then (Valid (S a)) else grabIndex (Index (Val (S a)) xs)
-                            _ -> grabIndex (Index (Val (S a)) xs)
-grabIndex (Index (Val (Fn a e)) (x:xs)) = case x of 
-                            Fn i exp -> if ((i == a) && ((foldExpressions emptyContext exp) == (foldExpressions emptyContext e))) then (Valid (Fn a e)) else grabIndex (Index (Val (Fn a e)) xs)
-                            _ -> grabIndex (Index (Val (Fn a e)) xs)
-grabIndex (Index a (x:xs))              = case (foldExpressions emptyContext [a]) of 
+grabIndex :: Context->Expression-> Result
+grabIndex c (Index a []) = Nil
+grabIndex c (Index (Val (I a)) (x:xs)) = case x of 
+                            I i -> if (i == a) then (Valid (I a)) else grabIndex c (Index (Val (I a)) xs)
+                            _ -> grabIndex c (Index (Val (I a)) xs)
+grabIndex c (Index (Val (S a)) (x:xs)) = case x of 
+                            S i -> if (i == a) then (Valid (S a)) else grabIndex c (Index (Val (S a)) xs)
+                            _ -> grabIndex c (Index (Val (S a)) xs)
+grabIndex c (Index (Val (Fn a e)) (x:xs)) = case x of 
+                            Fn i exp -> if ((i == a) && ((foldExpressions c exp) == (foldExpressions c e))) then (Valid (Fn a e)) else grabIndex c (Index (Val (Fn a e)) xs)
+                            _ -> grabIndex c (Index (Val (Fn a e)) xs)
+grabIndex c (Index a (x:xs))              = case (foldExpressions c [a]) of 
                                   (c , Error) -> Error
                                   (c , Nil)   -> Nil
-                                  (c ,Valid b) -> if (b == x) then Valid b else grabIndex (Index a xs)  
+                                  (c ,Valid b) -> if (b == x) then Valid b else grabIndex c (Index a xs)  
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
