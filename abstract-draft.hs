@@ -6,7 +6,10 @@ data Value =
     I Int
   | S String
   | Fn [Name] [Expression]
+  | List [Value]
   deriving (Show)
+
+type Name = String
 
 --We hand define Eq to ensure our fungibility between float and int is handled, and
 --to deal with Functions.
@@ -21,9 +24,6 @@ instance Eq Value where
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
-type List = [Value]
-type Name = String
-
 data Expression =
     Val Value
   | Var Name
@@ -31,9 +31,9 @@ data Expression =
   | Add Expression Expression
   | Multiply Expression Expression
   | Divide Expression Expression
-  | Index Expression List
-  | AssignIdx Expression Expression List
-  | Append Expression List
+  | Index Expression Expression
+  | AssignIdx Expression Expression Expression
+  | Append Expression Expression
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
