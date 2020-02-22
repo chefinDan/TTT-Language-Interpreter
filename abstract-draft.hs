@@ -27,10 +27,8 @@ type Name = String
 data Expression =
     Val Value
   | Var Name
-  | Define Name [Name] [Expression] --Define a function.  Name of function, parameters, code.
   | Call Name [Expression] --Call a function.  Name of function, arguments.
   | Add Expression Expression
-  -- | Subtract Expression Expression --Can be sugar using negate.
   | Multiply Expression Expression
   | Divide Expression Expression
   | Index Expression List
@@ -254,6 +252,10 @@ increment n = Assign n (Add (Var n) (Val (I 1) ) )
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1) ) ) )
 
+define :: Name -> [Name] -> [Expression] -> Expression
+define n ps es = Assign n (Val (Fn ps es))
+
+
 --LIBRARY and PROGRAM LAUNCHING
 
 buildLibrary :: Context -> [(Name, Value)] -> Context
@@ -272,7 +274,7 @@ emptyContext = Data.HashMap.Strict.empty
 
 library :: Context
 library = buildLibrary emptyContext [("doubler", doubler)
-                                    ,("fib", fib)
+                                    ,("fib", fib) 
                                     ]
 
 doubler :: Value
