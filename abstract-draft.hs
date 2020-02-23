@@ -200,19 +200,19 @@ eval c (Index value e2) =
    let (c', l)  = eval c e2
       in case  l of
         (Valid a) -> (c',Valid a)
-        (_) -> (c', Nil)
+        (_) -> (c, Nil)
 eval c (Append value e2) =
   do
    let (c', l)  = eval c e2
       in case  l of
         (Valid a) -> (c',Valid a)
-        (_) -> (c', Nil)
+        (_) -> (c, Nil)
 eval c (Prepend value e2) =
   do
    let (c', l)  = eval c e2
       in case  l of
         (Valid a) -> (c',Valid a)
-        (_) -> (c', Nil)
+        (_) -> (c, Nil)
 
 grabIndex :: Context-> Expression ->(Context, Result)
 grabIndex c (Index (List []) e) = (c, Nil)
