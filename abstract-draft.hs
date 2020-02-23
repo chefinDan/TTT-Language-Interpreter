@@ -40,7 +40,42 @@ data Expression =
   | While Expression [Expression]
   | Print Expression
   | Assign Name Expression
+  (S x) == (S y) = x == y
+--Because the only way of retrieving a function in Value form is by consulting the
+--uniqueness enforcing Context, we can safely just compare names.
+  (Fn x _) == (Fn y _) = x == y
+  _ == _ = False
+
+data Result = Valid Value | Error | Nil
+  deriving (Show, Eq)
+
+data Expression =
+    Val Value
+  | Var Name
+  | Call Name [Expression] --Call a function.  Name of function, arguments.
+  | Add Expression Expression
+  | Multiply Expression Expression
+  | Divide Expression Expression
+  | Index Value Expression
+  | AssignIdx Expression Expression Expression
+  | Append Value Expression
+  | Prepend Value Expression
+  | Equ Expression Expression
+  | If Expression [Expression] [Expression]
+  | While Expression [Expression]
+  | Print Expression
+  | Assign Name Expression
   | Or Expression Expression
+  | And Expression Expression
+  | Not Expression
+  deriving(Show, Eq)
+
+type Context = HashMap Name Value
+
+type Domain = Context -> Expression -> (Context, Result)
+
+eval :: Domain
+abstract-draft.hs [dos] (18:58 22/02/2020)                                                                                     43,1  5%  | Or Expression Expression
   | And Expression Expression
   | Not Expression
   deriving(Show, Eq)
