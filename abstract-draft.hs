@@ -31,9 +31,10 @@ data Expression =
   | Add Expression Expression
   | Multiply Expression Expression
   | Divide Expression Expression
-  | Index Expression Expression
+  | Index Value Expression
   | AssignIdx Expression Expression Expression
-  | Append Expression Expression
+  | Append Value Expression
+  | Prepend Value Expression
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
@@ -158,6 +159,51 @@ eval c (Divide l r) =
       (Error, _) -> (c, printError "Invalid operands to divide")
       (_, Error) -> (c, printError "Invalid operands to divide")
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
+--Index
+eval c (Index value e2) =
+  do
+   let (c', l)  = eval c e2
+      in case  l of
+        (Valid a) -> (c',Valid a)
+        (_) -> (c', Nil)
+eval c (Append value e2) =
+  do
+   let (c', l)  = eval c e2
+      in case  l of
+        (Valid a) -> (c',Valid a)
+        (_) -> (c', Nil)
+eval c (Prepend value e2) =
+  do
+   let (c', l)  = eval c e2
+      in case  l of
+        (Valid a) -> (c',Valid a)
+        (_) -> (c', Nil)
+
+grabIndex :: Context-> Expression ->(Context, Result)
+grabIndex c (Index (List []) e) = (c, Nil)
+grabIndex c (Index (List (x:xs)) e) = case (eval c e) of
+                            (c' , Valid a) -> if (a==x) then (c',Valid a) else grabIndex c (Index (List xs) e)
+                            _ -> (c , Nil)
+
+findDupsAppend::Context->Value->Value->[Value]
+findDupsAppend c (List []) e = [e]
+findDupsAppend c (List (x:xs)) a = if a == x then (findDupsAppend c (List xs) a) else [x] ++ (findDupsAppend c (List xs) a)
+
+appendList::Context->Expression -> (Context,Result)
+appendList c (Append (List (xs)) e) = case eval c (Append (List (xs)) e) of
+                                       (c' , Valid a) ->  (c', (Valid (List (findDupsAppend c' (List xs) a) )))
+                                       _ -> (c , Nil)
+appendList c _ = (c, Valid (List []))
+
+findDupsPrepend::Context->Value->Value->[Value]
+findDupsPrepend c (List []) e = []
+findDupsPrepend c (List (x:xs)) a = if a == x then (findDupsPrepend c (List xs) a) else [x] ++ (findDupsPrepend c (List xs) a)
+
+prependList::Context->Expression -> (Context,Result)
+prependList c (Prepend (List (xs)) e) = case eval c (Prepend (List (xs)) e) of
+                                       (c' , Valid a) ->  (c', (Valid (List ([a] ++ (findDupsPrepend c' (List xs) a)) )))
+                                       _ -> (c , Nil)
+prependList c _ = (c, Valid (List []))
 
 
 -- substring: for String division
