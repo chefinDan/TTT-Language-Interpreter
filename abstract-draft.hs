@@ -1,6 +1,7 @@
 import Data.HashMap.Strict
 import Debug.Trace
 import Prelude hiding (subtract)
+import Data.List
 
 data Value =
     I Int
@@ -28,7 +29,7 @@ data Expression =
     Val Value
   | Var Name
   | Call Name [Expression] --Call a function.  Name of function, arguments.
-  | Add Expression Expression
+  | Add Expression Expression 
   | Multiply Expression Expression
   | Divide Expression Expression
   | Index Expression Expression
@@ -158,7 +159,19 @@ eval c (Divide l r) =
       (Error, _) -> (c, printError "Invalid operands to divide")
       (_, Error) -> (c, printError "Invalid operands to divide")
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
-
+eval c (Index l e) = 
+  let (c', e')  = eval c e 
+  in case (e') of 
+      (Valid n1) -> (c', Valid n1)
+      _-> (c, Nil)
+      
+grabIndex :: Context-> Expression ->(Context, Result)
+grabIndex c (Index (Val (List [])) e) = (c, Nil)
+grabIndex c (Index (Val (List (xs))) e) = case (eval c (Index (Val(List xs)) e)) of
+                                                 (c',Valid (b)) -> case (elemIndex b xs) of
+                                                                       Nothing -> (c, Nil)
+                                                                       (Just a)-> (c', Valid(I a))                        
+                                                 _ -> (c , Nil)
 
 -- substring: for String division
 substring :: Int -> Value -> Value
