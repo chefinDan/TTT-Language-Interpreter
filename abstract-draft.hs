@@ -164,19 +164,19 @@ eval c (Index e l) =
       (c'', l') = eval c' l
   in  case (e', l') of
         (Valid (I a), Valid (List xs)) -> grabIndex c'' a xs
-        _ -> (c, printError "Invalid Arguments to Index")
+        _ -> (c'', printError "Invalid Arguments to Index")
 eval c (Append e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
   in  case (e', l') of
         (Valid a, Valid (List xs)) -> (c'', Valid (List (xs ++ [a])))
-        _ -> (c, printError "Invalid Arguments to Append")
+        _ -> (c'', printError "Invalid Arguments to Append")
 eval c (Prepend e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
   in  case (e', l') of
         (Valid a, Valid (List xs)) -> (c'', Valid (List (a : xs)))
-        _ -> (c, printError "Invalid Arguments to Prepend")
+        _ -> (c'', printError "Invalid Arguments to Prepend")
 eval c (AssignIdx i e l) =
   let (c'  , e') = eval c e
       (c'' , l') = eval c' l
@@ -184,7 +184,7 @@ eval c (AssignIdx i e l) =
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) ->
           if a > length xs || a < 0
-            then (c, printError "Out of Bounds")
+            then (c''', printError "Out of Bounds")
             else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
@@ -193,7 +193,7 @@ eval c (AddLists e l) =
   in  case (e', l') of
         (Valid (List a), Valid (List xs)) ->
           (c'', Valid (List (a ++ xs)))
-        _ -> (c, printError "Invalid Arguments to AddLists")
+        _ -> (c'', printError "Invalid Arguments to AddLists")
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
