@@ -161,17 +161,24 @@ eval c (Divide l r) =
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
 eval c (Index l e) = 
   let (c', e')  = eval c e 
-  in case (e') of 
-      (Valid n1) -> (c', Valid n1)
-      _-> (c, Nil)
+    in 
+      let (c'', l') = eval c' l 
+      in case (e') of 
+         (Valid n1) -> (c'', Valid n1)
+         _ -> (c, Nil)
+
       
 grabIndex :: Context-> Expression ->(Context, Result)
 grabIndex c (Index (Val (List [])) e) = (c, Nil)
-grabIndex c (Index (Val (List (xs))) e) = case (eval c (Index (Val(List xs)) e)) of
-                                                 (c',Valid (b)) -> case (elemIndex b xs) of
-                                                                       Nothing -> (c, Nil)
-                                                                       (Just a)-> (c', Valid(I a))                        
-                                                 _ -> (c , Nil)
+grabIndex c (Index (Val (List (xs))) e) = case eval c ( Index (Val(List (xs) )) e) of
+                                            (c', (Valid (I a))) -> if length xs > a then (c' , (Valid (xs !! a))) else (c, Error)
+                                            _ -> (c, Error)  
+grabIndex c (Index (Var name) e) = case  Data.HashMap.Strict.lookup name c of
+                                     Just (Fn fname [(Val (List xs))]) -> grabIndex c (Index (Val(List xs)) e )
+                                     _ -> (c,Error)
+grabIndex c _ = (c,Error)
+                                           -- lookup :: (Eq k, Hashable k) => k -> HashMap k v -> Maybe v 
+
 
 -- substring: for String division
 substring :: Int -> Value -> Value
@@ -288,8 +295,10 @@ emptyContext = Data.HashMap.Strict.empty
 library :: Context
 library = buildLibrary emptyContext [("doubler", doubler)
                                     ,("fib", fib) 
+                                    ,("list",listtest)
                                     ]
-
+listtest::Value
+listtest = Fn ["list"][Val( List [(I 5), (I 2)]) ]
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
