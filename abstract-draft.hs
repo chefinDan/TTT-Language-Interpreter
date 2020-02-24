@@ -35,6 +35,7 @@ data Expression =
   | Index Expression Expression
   | AssignIdx Expression Expression Expression
   | Append Expression Expression
+  | Prepend Expression Expression
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
@@ -166,11 +167,25 @@ eval c (Index e l) =
               ( (Valid (I a)), (Valid (List xs)) ) -> grabIndex c'' a xs 
               ( (Valid (I a)), (Valid (Fn name [Val(List xs)] )) ) -> grabIndex c'' a xs
               _ -> (c, (printError "Invalid Arguments"))
+eval c (Append e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (a)), (Valid (List xs)) ) -> (c'', (Valid (List (xs ++ [a])))) 
+              ( (Valid (a)), (Valid (Fn name [Val(List xs)] )) ) -> (c'', (Valid (List (xs ++ [a]))))
+              _ -> (c, (printError "Invalid Arguments"))
+eval c (Prepend e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (a)), (Valid (List xs)) ) -> (c'', (Valid (List ( [a] ++ xs)))) 
+              ( (Valid (a)), (Valid (Fn name [Val(List xs)] )) ) -> (c'', (Valid (List ([a] ++ xs))))
+              _ -> (c, (printError "Invalid Arguments"))              
 
       
 grabIndex :: Context->Int-> [Value] ->(Context, Result)
-grabIndex c i [] = (c, (printError "Empty List"))
-grabIndex c i xs = if length xs > i then (c , (Valid (xs !! i))) else (c, (printError "Index Out Of Bounds"))
+grabIndex c i [] = (c, Nil)
+grabIndex c i xs = if length xs > i then (c , (Valid (xs !! i))) else (c, Nil)
                                              
 
                                         
