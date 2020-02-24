@@ -166,7 +166,7 @@ eval c (Index e l) =
         in case (e',l') of 
               ( (Valid (I a)), (Valid (List xs)) ) -> grabIndex c'' a xs 
               ( (Valid (I a)), (Valid (Fn name [Val(List xs)] )) ) -> grabIndex c'' a xs
-              _ -> (c, (printError "Invalid Arguments"))
+              _ -> (c, (printError "Invalid Arguments"))             
 eval c (Append e l) = 
   let (c', e')  = eval c e 
       (c'', l') = eval c' l 
@@ -181,7 +181,18 @@ eval c (Prepend e l) =
               ( (Valid (a)), (Valid (List xs)) ) -> (c'', (Valid (List ( [a] ++ xs)))) 
               ( (Valid (a)), (Valid (Fn name [Val(List xs)] )) ) -> (c'', (Valid (List ([a] ++ xs))))
               _ -> (c, (printError "Invalid Arguments"))              
+eval c (AssignIdx i e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+      (c''', i') = eval c'' i
+        in case (i',e',l') of 
+              ( (Valid (I a)),(Valid d), (Valid (List xs)) ) -> if (a > length xs || a < 0 ) then (c, printError "Out of Bounds") else (c''', (Valid(List (changeIndex a d xs)))) 
+              ( (Valid (I a)), (Valid d) , (Valid (Fn name [Val(List xs)] )) ) -> if (a > length xs || a < 0) then (c, printError "Out of Bounds") else (c''', (Valid(List (changeIndex a d xs)))) 
+              _ -> (c, (printError "Invalid Arguments")) 
 
+changeIndex::Int->Value->[Value]-> [Value]    
+changeIndex i d [] = if i == 0 then [d] else []
+changeIndex i d (x:xs) = if ((i == 0)) then [d] ++ xs else  [x] ++ (changeIndex (i -1) d xs)              
       
 grabIndex :: Context->Int-> [Value] ->(Context, Result)
 grabIndex c i [] = (c, Nil)
