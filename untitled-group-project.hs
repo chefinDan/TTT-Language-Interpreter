@@ -40,7 +40,6 @@ data Expression =
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
-  | Print Expression
   | Assign Name Expression
   | Or Expression Expression
   | And Expression Expression
