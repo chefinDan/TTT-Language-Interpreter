@@ -1,6 +1,7 @@
 import Data.HashMap.Strict
 import Debug.Trace
 import Prelude hiding (subtract)
+import Data.List
 
 data Value =
     I Int
@@ -28,12 +29,14 @@ data Expression =
     Val Value
   | Var Name
   | Call Name [Expression] --Call a function.  Name of function, arguments.
-  | Add Expression Expression
+  | Add Expression Expression 
   | Multiply Expression Expression
   | Divide Expression Expression
   | Index Expression Expression
   | AssignIdx Expression Expression Expression
   | Append Expression Expression
+  | AddLists Expression Expression
+  | Prepend Expression Expression
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
@@ -158,6 +161,47 @@ eval c (Divide l r) =
       (Error, _) -> (c, printError "Invalid operands to divide")
       (_, Error) -> (c, printError "Invalid operands to divide")
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
+eval c (Index e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (I a)), (Valid (List xs)) ) -> grabIndex c'' a xs 
+              _ -> (c, (printError "Invalid Arguments"))             
+eval c (Append e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (a)), (Valid (List xs)) ) -> (c'', (Valid (List (xs ++ [a])))) 
+              _ -> (c, (printError "Invalid Arguments"))
+eval c (Prepend e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (a)), (Valid (List xs)) ) -> (c'', (Valid (List ( [a] ++ xs)))) 
+              _ -> (c, (printError "Invalid Arguments"))              
+eval c (AssignIdx i e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+      (c''', i') = eval c'' i
+        in case (i',e',l') of 
+              ( (Valid (I a)),(Valid d), (Valid (List xs)) ) -> if (a > length xs || a < 0 ) then (c, printError "Out of Bounds") else (c''', (Valid(List (changeIndex a d xs))))
+              _ -> (c, (printError "Invalid Arguments")) 
+eval c (AddLists e l) = 
+  let (c', e')  = eval c e 
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (List a)), (Valid (List xs)) ) -> (c'', (Valid (List ( a ++ xs)))) 
+              _ -> (c, (printError "Invalid Arguments"))
+changeIndex::Int->Value->[Value]-> [Value]    
+changeIndex i d [] = if i == 0 then [d] else []
+changeIndex i d (x:xs) = if ((i == 0)) then [d] ++ xs else  [x] ++ (changeIndex (i -1) d xs)              
+      
+grabIndex :: Context->Int-> [Value] ->(Context, Result)
+grabIndex c i [] = (c, Nil)
+grabIndex c i xs = if length xs > i then (c , (Valid (xs !! i))) else (c, Nil)
+                                             
+
+                                        
 
 
 -- substring: for String division
@@ -275,8 +319,10 @@ emptyContext = Data.HashMap.Strict.empty
 library :: Context
 library = buildLibrary emptyContext [("doubler", doubler)
                                     ,("fib", fib) 
+                                    ,("list",listtest)
                                     ]
-
+listtest::Value
+listtest = Fn ["list"][Val( List [(I 5), (I 2)]) ]
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
