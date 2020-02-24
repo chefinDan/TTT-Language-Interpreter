@@ -159,25 +159,21 @@ eval c (Divide l r) =
       (Error, _) -> (c, printError "Invalid operands to divide")
       (_, Error) -> (c, printError "Invalid operands to divide")
       (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
-eval c (Index l e) = 
+eval c (Index e l) = 
   let (c', e')  = eval c e 
-    in 
-      let (c'', l') = eval c' l 
-      in case (e') of 
-         (Valid n1) -> (c'', Valid n1)
-         _ -> (c, Nil)
+      (c'', l') = eval c' l 
+        in case (e',l') of 
+              ( (Valid (I a)), (Valid (List xs)) ) -> grabIndex c'' a xs 
+              ( (Valid (I a)), (Valid (Fn name [Val(List xs)] )) ) -> grabIndex c'' a xs
+              _ -> (c, (printError "Invalid Arguments"))
 
       
-grabIndex :: Context-> Expression ->(Context, Result)
-grabIndex c (Index (Val (List [])) e) = (c, Nil)
-grabIndex c (Index (Val (List (xs))) e) = case eval c ( Index (Val(List (xs) )) e) of
-                                            (c', (Valid (I a))) -> if length xs > a then (c' , (Valid (xs !! a))) else (c, Error)
-                                            _ -> (c, Error)  
-grabIndex c (Index (Var name) e) = case  Data.HashMap.Strict.lookup name c of
-                                     Just (Fn fname [(Val (List xs))]) -> grabIndex c (Index (Val(List xs)) e )
-                                     _ -> (c,Error)
-grabIndex c _ = (c,Error)
-                                           -- lookup :: (Eq k, Hashable k) => k -> HashMap k v -> Maybe v 
+grabIndex :: Context->Int-> [Value] ->(Context, Result)
+grabIndex c i [] = (c, (printError "Empty List"))
+grabIndex c i xs = if length xs > i then (c , (Valid (xs !! i))) else (c, (printError "Index Out Of Bounds"))
+                                             
+
+                                        
 
 
 -- substring: for String division
