@@ -22,6 +22,16 @@ instance Eq Value where
   (Fn x _) == (Fn y _) = x == y
   _        == _        = False
 
+--We're defining Ord only in terms of less than, because that is all our
+--semantics require to bootstrap the other operations in sugar.
+instance Ord Value where
+  (I x) < (I y) = x < y
+  (S x) < (S y) = x < y
+  _     < _     = False
+  (I x) <= (I y) = x <= y
+  (S x) <= (S y) = x <= y
+  _     <= _     = False
+
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
@@ -44,6 +54,7 @@ data Expression =
   | Or Expression Expression
   | And Expression Expression
   | Not Expression
+  | LessThan Expression Expression
   deriving(Show, Eq)
 
 type Context = HashMap Name Value
