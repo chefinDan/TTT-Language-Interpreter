@@ -207,8 +207,14 @@ eval c (AddLists e l) =
         _ -> (c'', printError "Invalid Arguments to AddLists")
 
 eval c (LessThan (Val (I n1)) (Val (I n2)))
-  | n1 < n2 = (c, true)
-  | otherwise (c, false)
+  | I n1 < I n2 = (c, true)
+  | otherwise = (c, false)
+eval c (LessThan(Val (S s1)) (Val (S s2)))
+  | S s1 < S s2 = (c, true)
+  | otherwise = (c, false)
+eval c (LessThan(Val (I n)) (Val (S s))) = (c, printError "Error: Mismatched type when using '<' operator")
+eval c (LessThan(Val (S s)) (Val (I n))) = (c, printError "Error: Mismatched type when using '<' operator")
+
 -- eval c (LessThan l r) 
 --   | l < r = (c'', True)
 --     where (c' , l) = eval c n1
@@ -239,6 +245,7 @@ extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
+
 
 
 {- foldExpressions is the basic function for crunching a series of expressions
