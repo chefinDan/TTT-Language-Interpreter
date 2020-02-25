@@ -55,6 +55,9 @@ data Expression =
   | And Expression Expression
   | Not Expression
   | LessThan Expression Expression
+  | LessThanEq Expression Expression
+  | GreaterThan Expression Expression
+  | GreaterThanEq Expression Expression
   deriving(Show, Eq)
 
 type Context = HashMap Name Value
@@ -202,6 +205,17 @@ eval c (AddLists e l) =
   in  case (e', l') of
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
+
+eval c (LessThan (Val (I n1)) (Val (I n2)))
+  | n1 < n2 = (c, true)
+  | otherwise (c, false)
+-- eval c (LessThan l r) 
+--   | l < r = (c'', True)
+--     where (c' , l) = eval c n1
+--           (c'', r) = eval c' n2
+--  in  case (l', r') of
+--        (l' < r') -> (c'', true)
+
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
