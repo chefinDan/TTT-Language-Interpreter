@@ -181,17 +181,15 @@ eval c (AssignIdx i e l) =
       (c'' , l') = eval c' l
       (c''', i') = eval c'' i
   in  case (i', e', l') of
-        (Valid (I a), Valid d, Valid (List xs)) ->
-          if a > length xs || a < 0
-            then (c''', printError "Out of Bounds")
-            else (c''', Valid (List (changeIndex a d xs)))
+        (Valid (I a), Valid d, Valid (List xs)) -> if a > length xs || a < 0
+          then (c''', printError "Out of Bounds")
+          else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
   in  case (e', l') of
-        (Valid (List a), Valid (List xs)) ->
-          (c'', Valid (List (a ++ xs)))
+        (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
@@ -330,12 +328,16 @@ emptyContext = Data.HashMap.Strict.empty
 library :: Context
 library = buildLibrary
   emptyContext
-  [("doubler", doubler), ("fib", fib), ("list", listtest)]
+  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
+
+
 listtest :: Value
 listtest = Fn ["list"] [Val (List [I 5, I 2])]
+
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
+--Simple naive Fibonacci implementation.
 fib :: Value
 fib = Fn
   ["n"]
@@ -355,5 +357,46 @@ fib = Fn
       ]
   ]
 
+
+--Maplist takes as arguments a function and a list, and maps that function over
+--each item in the list, returning the new, modified list.
+maplist :: Value
+maplist = Fn
+  ["fn", "input"]
+  [ Assign "i" (Val (I 0))
+  , While
+    (Index (Var "i") (Var "input"))
+    [ Assign
+      "input"
+      (AssignIdx (Var "i")
+                 (Call "fn" [Index (Var "i") (Var "input")])
+                 (Var "input")
+      )
+    , increment "i"
+    ]
+  , Var "input"
+  ]
+
+--mapdemo is a demo program.  It defines a list of integers, then
+--calls maplist, passing the doubler function in as an argument.  It then
+--defines a list of strings, and calls maplist on that as well, this time
+--passing in a function literal that multiplies its argument by three.
+--Finally, it concatenates the two lists and returns them.
+mapdemo :: Value
+mapdemo = Fn
+  []
+  [ Assign "ints"    (Val (List [I 10, I 20, I 30]))
+  , Assign "output"  (Call "maplist" [Var "doubler", Var "ints"])
+  , Assign "strings" (Val (List [S "foo", S "bar", S "baz"]))
+  , AddLists
+    (Var "output")
+    (Call "maplist"
+          [Val (Fn ["str"] [Multiply (Var "str") (Val (I 3))]), Var "strings"]
+    )
+  ]
+
 runFibonacci :: Int -> Result
 runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
+
+runMapDemo :: Result
+runMapDemo = run library mapdemo
