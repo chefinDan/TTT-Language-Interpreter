@@ -75,7 +75,7 @@ List are, of course, intrinsically invertible; anything you put into a list you 
 
 Lists, and their basic operations, are implemented as core.
 
-\subsection*{First-Class Functions}
+\subsection*{First-Class Functions (2 pts)}
 Functions are a basic data type; they can be passed into functions, stored in lists, and bound to variables.  Trying to do arithmetic on a function will generate an error, however.
 
 \subsection*{Additional Note}
@@ -84,6 +84,10 @@ Our language has a number of features not listed here, like boolean operations f
 \section*{Safety}
 
 Due to the heavily composable nature of Untitled Group Project, there are a great many errors that can occur.  It's possible to write a valid (Haskell) program in our language in which every operation finds itself with the wrong operands.  We handle this in two ways.  Firstly, our semantic domain for evaluating expressions (and programs) allows for the possibility of returning an error.  (More on this in the next section.)  Secondly, any time an expression evaluates to an error, we take advantage of Haskell's debug tracing to print an appropriate message to the console.  Because the program will keep running, a lot of error messages can pile up, but of course, the first one emitted is the first place to look to begin fixing them.
+
+We considered using a static type system, but ultimately felt it offered no real benefit given the way the language is currently used.  For example, consider the Index expression, which returns the value held at some index in a list.  What type that returns depends not only on the types held in the list (which is easily knowable,) but on precisely which index is requested.  That requires us to know not merely that an integer value of some sort is being used in the Expression, but exactly \emph{which} integer it is: to find that out, we essentially need to fully evaluate the program.  At that point, static type checking amounts to nothing more than running the program twice.
+
+We may revisit this later if we decide to implement a compilation step later on; at that point, a full evaluation of the program prior to running makes sense.
 
 \section*{Implementation}
 
