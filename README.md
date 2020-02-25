@@ -7,10 +7,16 @@ Quan Nguyen nguyenq2
   
 Introduction  
   
-Our language, Un/"t"titled Group Project (pronounced French) is a pass-by-value imperative language. Untitled Group Project's most interesting features include first class expressions and the list operations: 1) Prepend/Append, 2) Indexing, 3) Overwriting an index, and 4) Concatenation.  
+Our language, Untitled Group Project (pronounced French) is a pass-by-value imperative language. Untitled Group Project's most interesting features include first class expressions and the list operations: 1) Prepend/Append, 2) Indexing, 3) Overwriting an index, and 4) Concatenation.  
   
 Compilation  
-Untitled Group Project is meant to be run from GHCI 
+Untitled Group Project is meant to be run from GHCI by loading the file, "untitled-group-project.hs" that is located in the zipfile.  
+  
+:load untitled-group-project.hs  
+  
+Good Program Examples  
+  
+Bad Program Examples  
 
 Instructions for how to execute example programs in your language. Specifically:
 If your language implementation is intended to be run from GHCi, which module should be loaded?
