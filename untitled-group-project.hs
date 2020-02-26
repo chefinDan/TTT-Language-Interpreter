@@ -1,7 +1,7 @@
 import           Data.HashMap.Strict
 import           Debug.Trace
-import           Prelude                 hiding ( subtract )
-import           Data.List
+import           Prelude                 hiding ( subtract, not, and )
+--import           Data.List
 
 
 {- Values are the basic data types available as literals.  Note that boolean
@@ -64,7 +64,7 @@ data Expression =
   | While Expression [Expression]
   | Assign Name Expression
   | Or Expression Expression
-  | And Expression Expression
+  | Nand Expression Expression
   | Not Expression
   | LessThan Expression Expression
   deriving(Show, Eq)
@@ -106,8 +106,8 @@ eval c (Assign s ex) =
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
-eval c (Equ l r) | l' == r'  = (c'', true)
-                 | otherwise = (c'', false)
+eval c (Equ l r) | l' == r'  = (c'', (Valid (I 1)))
+                 | otherwise = (c'', (Valid (I 0)))
  where
   (c' , l') = eval c l
   (c'', r') = eval c' r
@@ -116,16 +116,16 @@ eval c (Or e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (False, False) -> (c'', false)
-        _              -> (c'', true)
-eval c (And e1 e2) =
+        (False, False) -> (c'', (Valid (I 0)))
+        _              -> (c'', (Valid (I 1)))
+eval c (Nand e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (True, True) -> (c'', true)
-        _            -> (c'', false)
+        (True, True) -> (c'', (Valid (I 0)))
+        _            -> (c'', (Valid (I 1)))
 eval c (Not e) =
-  let (c', r) = eval c e in if extractTruth r then (c', false) else (c', true)
+  let (c', r) = eval c e in if extractTruth r then (c', (Valid (I 0))) else (c', (Valid (I 1)))
 --If/Else
 eval c (If cnd et ef) =
   let (c', r) = eval c cnd
@@ -334,11 +334,22 @@ call c fname e =
 -- SUGAR
 
 --User-useable boolean literals.
-true :: Result
-true = Valid (I 1)
+true :: Expression
+true = (Val (I 1))
 
-false :: Result
-false = Nil
+false :: Expression
+false = (Val(I 0))
+
+not ::Context-> Expression-> (Context, Result)
+not c e = let (c',y) =  eval c (Nand e e) in (c', y)
+
+and ::Context->Expression->Expression-> (Context, Result)
+and c e1 e2 = let (c',Valid y) = eval c ( Nand e1 e2)
+                  in eval c' (Nand (Val y) (Val y))
+
+or ::Context->Expression->Expression-> (Context, Result)
+or = undefined
+
 
 --increment is sugar that rebinds a variable to that variable + 1.
 increment :: Name -> Expression
@@ -372,7 +383,7 @@ buildLibrary c ((n, fn) : ts) =
 library :: Context
 library = buildLibrary
   emptyContext
-  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
+  [("doubler", doubler), ("fib", fib), ("maplist", maplist)]
 
 --run is the function that actually launched a program.  It is passed a context,
 --which will generally be the library, and a function, which it will bind to
