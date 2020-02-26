@@ -250,6 +250,7 @@ printError s                 = Error
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0 )) = False
 extractTruth (Valid (S "")) = False
+extractTruth (Valid (I 1))  = True 
 extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
