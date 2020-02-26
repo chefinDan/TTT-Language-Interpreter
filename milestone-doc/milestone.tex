@@ -7,18 +7,18 @@
 \begin{flushleft}
 CS 381 Project Milestone
 
-Michael Andrews
+Michael Andrews 932-774-260
 
-Daniel Green
+Daniel Green 932-637-313 
 
-Nicholas Matsumoto
+Nicholas Matsumoto 932-709-078
 
-Quan Nguyen
+Quan Nguyen 933-953-856
 \end{flushleft}
 
 \section*{Introduction}
 
-Our language, current titled ``Untitle Group Project'' and pronounced ``French'', is a pass-by-value imperative language.
+Our language, current titled ``Un\"ti\"tled Group Projec\"t'' (abbreviated ``\"T\"T\"T'' and pronounced ``French'',) is a pass-by-value imperative language.
 
 The basic logical unit of our language is the Expression: we do not distinguish between top-level definitions, statements and expressions.  Rather, everything is composed of Expressions that can be composed arbitrarily, and which will always evaluate to some end result.  Expressions may also, naturally, alter state.  We approximate top level definitions by allowing the user to bind a function literal to a variable name at any time.  (Via, of course, an Expression.)
 
@@ -38,7 +38,7 @@ In our implemented semantics, this would be written as:
 Assign "y" (Add (Assign "x" (Var (I 3)) (increment "x"))
 \end{lstlisting}
 
-In Untitled Group Project, this is perfectly valid.  Assign both binds a literal to a name and evaluates to the bound value; increment (which is syntactic sugar) both modifies the bound value associated with the name and evaluates to the result.  The overall expression would therefore evaluate to 7, and afterwards the name \texttt{y} would bound to the value 7, while \texttt{x} would be bound to 4.
+In \"T\"T\"T, this is perfectly valid.  Assign both binds a literal to a name and evaluates to the bound value; increment (which is syntactic sugar) both modifies the bound value associated with the name and evaluates to the result.  The overall expression would therefore evaluate to 7, and afterwards the name \texttt{y} would bound to the value 7, while \texttt{x} would be bound to 4.
 
 By taking this approach, nearly everything can be composed arbitrarily.  Note that this flexibility does come at a cost, though: because nearly everything in the grammar is composed of the same Haskell type, it is extremely easy to pass an invalid argument to almost any expression: Add expects, ultimately, to get either two integers or two strings: nothing stops the user from writing a program that attempts to add a function to an error.  This necessitates robust error reporting; we used the Debug.trace library to allow programs to emit descriptive errors at runtime.
 
@@ -75,7 +75,7 @@ List are, of course, intrinsically invertible; anything you put into a list you 
 
 Lists, and their basic operations, are implemented as core.
 
-\subsection*{First-Class Functions}
+\subsection*{First-Class Functions (2 pts)}
 Functions are a basic data type; they can be passed into functions, stored in lists, and bound to variables.  Trying to do arithmetic on a function will generate an error, however.
 
 \subsection*{Additional Note}
@@ -83,7 +83,11 @@ Our language has a number of features not listed here, like boolean operations f
 
 \section*{Safety}
 
-Due to the heavily composable nature of Untitled Group Project, there are a great many errors that can occur.  It's possible to write a valid (Haskell) program in our language in which every operation finds itself with the wrong operands.  We handle this in two ways.  Firstly, our semantic domain for evaluating expressions (and programs) allows for the possibility of returning an error.  (More on this in the next section.)  Secondly, any time an expression evaluates to an error, we take advantage of Haskell's debug tracing to print an appropriate message to the console.  Because the program will keep running, a lot of error messages can pile up, but of course, the first one emitted is the first place to look to begin fixing them.
+Due to the heavily composable nature of \"T\"T\"T, there are a great many errors that can occur.  It's possible to write a valid (Haskell) program in our language in which every operation finds itself with the wrong operands.  We handle this in two ways.  Firstly, our semantic domain for evaluating expressions (and programs) allows for the possibility of returning an error.  (More on this in the next section.)  Secondly, any time an expression evaluates to an error, we take advantage of Haskell's debug tracing to print an appropriate message to the console.  Because the program will keep running, a lot of error messages can pile up, but of course, the first one emitted is the first place to look to begin fixing them.
+
+We considered using a static type system, but ultimately felt it offered no real benefit given the way the language is currently used.  For example, consider the Index expression, which returns the value held at some index in a list.  What type that returns depends not only on the types held in the list (which is easily knowable,) but on precisely which index is requested.  That requires us to know not merely that an integer value of some sort is being used in the Expression, but exactly \emph{which} integer it is: to find that out, we essentially need to fully evaluate the program.  At that point, static type checking amounts to nothing more than running the program twice.
+
+We may revisit this later if we decide to implement a compilation step later on; at that point, a full evaluation of the program prior to running makes sense.
 
 \section*{Implementation}
 

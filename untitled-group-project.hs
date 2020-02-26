@@ -22,6 +22,16 @@ instance Eq Value where
   (Fn x _) == (Fn y _) = x == y
   _        == _        = False
 
+--We're defining Ord only in terms of less than, because that is all our
+--semantics require to bootstrap the other operations in sugar.
+instance Ord Value where
+  (I x) < (I y) = x < y
+  (S x) < (S y) = x < y
+  _     < _     = False
+  (I x) <= (I y) = x <= y
+  (S x) <= (S y) = x <= y
+  _     <= _     = False
+
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
@@ -44,6 +54,7 @@ data Expression =
   | Or Expression Expression
   | And Expression Expression
   | Not Expression
+  | LessThan Expression Expression
   deriving(Show, Eq)
 
 type Context = HashMap Name Value
@@ -181,8 +192,8 @@ eval c (AssignIdx i e l) =
       (c'' , l') = eval c' l
       (c''', i') = eval c'' i
   in  case (i', e', l') of
-        (Valid (I a), Valid d, Valid (List xs)) -> if a > length xs || a < 0
-          then (c''', printError "Out of Bounds")
+        (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
+          then (c''', printError ("AssignIdx: Out of Bounds"))
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
