@@ -1,9 +1,28 @@
 module RunLibrary where
 
-import Core
-import Sugar
-import Data.HashMap.Strict
-import Prelude hiding (subtract, and, or, not)
+import           Core
+import           Sugar
+import           Data.HashMap.Strict
+import           Prelude                 hiding ( subtract
+                                                , and
+                                                , or
+                                                , not
+                                                )
+--LAUNCHER
+
+--run is the function that actually launched a program.  It is passed a context,
+--which will generally be the library, and a function, which it will bind to
+--the name "main" in that context, and execute.
+run :: Context -> Value -> Result
+run c (Fn n e) =
+  let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
+      (_, r) = call c' "main" []
+  in  r
+run _ _ = printError
+  "Could not launch program: second argument to run must be a function."
+
+
+--LIBRARY
 
 --This module holds the library, demo programs, and the logic for launching
 --programs.
@@ -25,43 +44,42 @@ buildLibrary c ((n, fn) : ts) =
 library :: Context
 library = buildLibrary
   emptyContext
-  [("doubler", doubler), ("fib", fib), ("maplist", maplist),
-   ("not", not), ("and", and), ("or", or), ("xor", xor), 
-   ("nor", nor), ("xnor", xnor)]
+  [ ("doubler", doubler)
+  , ("fib"    , fib)
+  , ("maplist", maplist)
+  , ("not"    , not)
+  , ("and"    , and)
+  , ("or"     , or)
+  , ("xor"    , xor)
+  , ("nor"    , nor)
+  , ("xnor"   , xnor)
+  ]
 
---run is the function that actually launched a program.  It is passed a context,
---which will generally be the library, and a function, which it will bind to
---the name "main" in that context, and execute.
-run :: Context -> Value -> Result
-run c (Fn n e) =
-  let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
-      (_, r) = call c' "main" []
-  in  r
-run _ _ = printError
-  "Could not launch program: second argument to run must be a function."
+
 
 --Library function that just adds an argument to itself and returns the new
 --value.
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
+--Logical operation functions, all deriving from the Core Nand.
 not :: Value
 not = Fn ["p"] [Nand (Var "p") (Var "p")]
 
 and :: Value
-and = Fn ["p", "q"] 
-   [Nand (Nand (Var "p") (Var "q")) (Nand (Var "p") (Var "q")) ]
+and =
+  Fn ["p", "q"] [Nand (Nand (Var "p") (Var "q")) (Nand (Var "p") (Var "q"))]
+
 or :: Value
-or = Fn ["p", "q"] 
-  [Nand (Call "not" [Var "p"]) (Call "not" [Var "q"])]
-nor :: Value 
-nor = Fn ["p", "q"] 
-  [Call "not" [Call "or" [Var "p", Var "q"]]]
+or = Fn ["p", "q"] [Nand (Call "not" [Var "p"]) (Call "not" [Var "q"])]
+
+nor :: Value
+nor = Fn ["p", "q"] [Call "not" [Call "or" [Var "p", Var "q"]]]
 
 xor :: Value
-xor = Fn ["p", "q"] 
-  [Call "and" 
-    [Call "or" [Var "p", Var "q"], Nand (Var "p") (Var "q")]]
+xor = Fn
+  ["p", "q"]
+  [Call "and" [Call "or" [Var "p", Var "q"], Nand (Var "p") (Var "q")]]
 
 xnor :: Value
 xnor = Fn ["p", "q"] [Call "not" [Call "xor" [Var "p", Var "q"]]]
@@ -106,6 +124,8 @@ maplist = Fn
   , Var "input"
   ]
 
+--DEMO PROGRAMS
+
 --mapdemo is a demo program.  It defines a list of integers, then
 --calls maplist, passing the doubler function in as an argument.  It then
 --defines a list of strings, and calls maplist on that as well, this time
@@ -131,7 +151,3 @@ runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
 --Helper function to run the mapdemo demo.
 runMapDemo :: Result
 runMapDemo = run library mapdemo
-
---DOCTESTS
---
---
