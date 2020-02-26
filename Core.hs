@@ -1,3 +1,5 @@
+module Core where
+
 import           Data.HashMap.Strict
 import           Debug.Trace
 import           Prelude                 hiding ( subtract )
@@ -106,8 +108,8 @@ eval c (Assign s ex) =
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
-eval c (Equ l r) | l' == r'  = (c'', true)
-                 | otherwise = (c'', false)
+eval c (Equ l r) | l' == r'  = (c'', Valid (I 1))
+                 | otherwise = (c'', Nil)
  where
   (c' , l') = eval c l
   (c'', r') = eval c' r
@@ -116,16 +118,16 @@ eval c (Or e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (False, False) -> (c'', false)
-        _              -> (c'', true)
+        (False, False) -> (c'', Nil)
+        _              -> (c'', Valid (I 1))
 eval c (And e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (True, True) -> (c'', true)
-        _            -> (c'', false)
+        (True, True) -> (c'', Valid (I 1))
+        _            -> (c'', Nil)
 eval c (Not e) =
-  let (c', r) = eval c e in if extractTruth r then (c', false) else (c', true)
+  let (c', r) = eval c e in if extractTruth r then (c', Nil) else (c', Valid (I 1))
 --If/Else
 eval c (If cnd et ef) =
   let (c', r) = eval c cnd
@@ -216,7 +218,7 @@ eval c (AssignIdx i e l) =
       (c''', i') = eval c'' i
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
-          then (c''', printError ("AssignIdx: Out of Bounds"))
+          then (c''', printError "AssignIdx: Out of Bounds")
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
@@ -331,127 +333,5 @@ call c fname e =
             )
           )
 
--- SUGAR
-
---User-useable boolean literals.
-true :: Result
-true = Valid (I 1)
-
-false :: Result
-false = Nil
-
---increment is sugar that rebinds a variable to that variable + 1.
-increment :: Name -> Expression
-increment n = Assign n (Add (Var n) (Val (I 1)))
-
---subtract is Sugar for, well, subtraction.
-subtract :: Expression -> Expression -> Expression
-subtract l r = Add l (Multiply r (Val (I (-1))))
-
---define is simply sugar for binding a function varaible.
-define :: Name -> [Name] -> [Expression] -> Expression
-define n ps es = Assign n (Val (Fn ps es))
 
 
---LIBRARY and PROGRAM LAUNCHING
-
-
---Just an empty context, useful for various purposes.
-emptyContext :: Context
-emptyContext = Data.HashMap.Strict.empty
-
---Since our library is implemented as a Context containing bindings for
---various library functions, we have this function to pre-populate it.
-buildLibrary :: Context -> [(Name, Value)] -> Context
-buildLibrary c [] = c
-buildLibrary c ((n, fn) : ts) =
-  buildLibrary (Data.HashMap.Strict.insert n fn c) ts
-
---The actual library; functions to be added to the library cna be placed
---in the list.
-library :: Context
-library = buildLibrary
-  emptyContext
-  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
-
---run is the function that actually launched a program.  It is passed a context,
---which will generally be the library, and a function, which it will bind to
---the name "main" in that context, and execute.
-run :: Context -> Value -> Result
-run c (Fn n e) =
-  let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
-      (_, r) = call c' "main" []
-  in  r
-run _ _ = printError
-  "Could not launch program: second argument to run must be a function."
-
---Library function that just adds an argument to itself and returns the new
---value.
-doubler :: Value
-doubler = Fn ["x"] [Add (Var "x") (Var "x")]
-
---Simple naive Fibonacci implementation.
-fib :: Value
-fib = Fn
-  ["n"]
-  [ If
-      (Equ (Var "n") (Val (I 0)))
-      [--then
-       Val (I 0)]
-      [--else
-        If
-          (Equ (Var "n") (Val (I 1)))
-          [--then
-           Val (I 1)]
-          [--else
-            Add (Call "fib" [subtract (Var "n") (Val (I 1))])
-                (Call "fib" [subtract (Var "n") (Val (I 2))])
-          ]
-      ]
-  ]
-
-
---Maplist takes as arguments a function and a list, and maps that function over
---each item in the list, returning the new, modified list.
-maplist :: Value
-maplist = Fn
-  ["fn", "input"]
-  [ Assign "i" (Val (I 0))
-  , While
-    (Index (Var "i") (Var "input"))
-    [ Assign
-      "input"
-      (AssignIdx (Var "i")
-                 (Call "fn" [Index (Var "i") (Var "input")])
-                 (Var "input")
-      )
-    , increment "i"
-    ]
-  , Var "input"
-  ]
-
---mapdemo is a demo program.  It defines a list of integers, then
---calls maplist, passing the doubler function in as an argument.  It then
---defines a list of strings, and calls maplist on that as well, this time
---passing in a function literal that multiplies its argument by three.
---Finally, it concatenates the two lists and returns them.
-mapdemo :: Value
-mapdemo = Fn
-  []
-  [ Assign "ints"    (Val (List [I 10, I 20, I 30]))
-  , Assign "output"  (Call "maplist" [Var "doubler", Var "ints"])
-  , Assign "strings" (Val (List [S "foo", S "bar", S "baz"]))
-  , AddLists
-    (Var "output")
-    (Call "maplist"
-          [Val (Fn ["str"] [Multiply (Var "str") (Val (I 3))]), Var "strings"]
-    )
-  ]
-
---Helper function to run the fibonacci demo; takes an int as an argument.
-runFibonacci :: Int -> Result
-runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
-
---Helper function to run the mapdemo demo.
-runMapDemo :: Result
-runMapDemo = run library mapdemo
