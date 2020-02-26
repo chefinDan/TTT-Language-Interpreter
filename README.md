@@ -14,11 +14,15 @@ first-class functions and list operations.
 
 ##Executing Programs
 
-###TTT programs, at present, are run inside of ghci.  The language implementation
-consists only of one file; untitled-group-project.hs.  There are no modules to load.
+###TTT programs, at present, are run inside of ghci.  The functions to run programs
+reside in the RunLibrary module.
 
 The command would be:
-	ghci untitled-group-project.hs
+	ghci RunLibrary.hs
+
+Programs in this language are functions, so the 'run' command is used to pass
+in a starting context and bootstrap execution.  Functions to simplify this
+are provided for the demo programs.
 
 ##Demo Programs
 

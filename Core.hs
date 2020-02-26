@@ -2,8 +2,12 @@ module Core where
 
 import           Data.HashMap.Strict
 import           Debug.Trace
-import           Prelude                 hiding ( subtract )
-import           Data.List
+import           Prelude                 hiding ( subtract
+                                                , not
+                                                , and
+                                                , or
+                                                )
+--import           Data.List
 
 
 {- Values are the basic data types available as literals.  Note that boolean
@@ -65,9 +69,7 @@ data Expression =
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
   | Assign Name Expression
-  | Or Expression Expression
-  | And Expression Expression
-  | Not Expression
+  | Nand Expression Expression
   | LessThan Expression Expression
   deriving(Show, Eq)
 
@@ -109,25 +111,18 @@ eval c (Assign s ex) =
 eval c (Call n e) = call c n e
 --Equality
 eval c (Equ l r) | l' == r'  = (c'', Valid (I 1))
-                 | otherwise = (c'', Nil)
+                 | otherwise = (c'', Valid (I 0))
  where
   (c' , l') = eval c l
   (c'', r') = eval c' r
---Logical Operators
-eval c (Or e1 e2) =
+
+--Logical Operator
+eval c (Nand e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (False, False) -> (c'', Nil)
-        _              -> (c'', Valid (I 1))
-eval c (And e1 e2) =
-  let (c' , l) = eval c e1
-      (c'', r) = eval c' e2
-  in  case (extractTruth l, extractTruth r) of
-        (True, True) -> (c'', Valid (I 1))
-        _            -> (c'', Nil)
-eval c (Not e) =
-  let (c', r) = eval c e in if extractTruth r then (c', Nil) else (c', Valid (I 1))
+        (True, True) -> (c'', Valid (I 0))
+        _            -> (c'', Valid (I 1))
 --If/Else
 eval c (If cnd et ef) =
   let (c', r) = eval c cnd
@@ -332,6 +327,3 @@ call c fname e =
             ++ "failed: name is bound to non-function variable."
             )
           )
-
-
-

@@ -3,7 +3,7 @@ module RunLibrary where
 import Core
 import Sugar
 import Data.HashMap.Strict
-import Prelude hiding (subtract)
+import Prelude hiding (subtract, and, or, not)
 
 --This module holds the library, demo programs, and the logic for launching
 --programs.
@@ -25,7 +25,9 @@ buildLibrary c ((n, fn) : ts) =
 library :: Context
 library = buildLibrary
   emptyContext
-  [("doubler", doubler), ("fib", fib), ("maplist", maplist)]
+  [("doubler", doubler), ("fib", fib), ("maplist", maplist),
+   ("not", not), ("and", and), ("or", or), ("xor", xor), 
+   ("nor", nor), ("xnor", xnor)]
 
 --run is the function that actually launched a program.  It is passed a context,
 --which will generally be the library, and a function, which it will bind to
@@ -42,6 +44,27 @@ run _ _ = printError
 --value.
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
+
+not :: Value
+not = Fn ["p"] [Nand (Var "p") (Var "p")]
+
+and :: Value
+and = Fn ["p", "q"] 
+   [Nand (Nand (Var "p") (Var "q")) (Nand (Var "p") (Var "q")) ]
+or :: Value
+or = Fn ["p", "q"] 
+  [Nand (Call "not" [Var "p"]) (Call "not" [Var "q"])]
+nor :: Value 
+nor = Fn ["p", "q"] 
+  [Call "not" [Call "or" [Var "p", Var "q"]]]
+
+xor :: Value
+xor = Fn ["p", "q"] 
+  [Call "and" 
+    [Call "or" [Var "p", Var "q"], Nand (Var "p") (Var "q")]]
+
+xnor :: Value
+xnor = Fn ["p", "q"] [Call "not" [Call "xor" [Var "p", Var "q"]]]
 
 --Simple naive Fibonacci implementation.
 fib :: Value
@@ -108,3 +131,7 @@ runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
 --Helper function to run the mapdemo demo.
 runMapDemo :: Result
 runMapDemo = run library mapdemo
+
+--DOCTESTS
+--
+--

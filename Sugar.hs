@@ -1,13 +1,14 @@
 module Sugar where
 
 import Core
+import Prelude hiding (subtract, and, or, not)
 
 --User-useable boolean literals.
-true :: Result
-true = Valid (I 1)
+true :: Expression
+true = Val (I 1)
 
-false :: Result
-false = Nil
+false :: Expression
+false = Val (I 0)
 
 --increment is sugar that rebinds a variable to that variable + 1.
 increment :: Name -> Expression
