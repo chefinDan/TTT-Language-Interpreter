@@ -8,7 +8,7 @@ Quan Nguyen nguyenq2
 
 ##Introduction
 
-Out lnaguage, Untitled Group Project (abbreviated TTT and pronounced 'French',)
+Our language, Untitled Group Project (abbreviated TTT and pronounced 'French',)
 is a pass-by-value imperative language.  TTT's most interesting features include
 first-class functions and list operations.
 
