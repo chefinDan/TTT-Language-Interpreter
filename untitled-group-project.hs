@@ -1,6 +1,6 @@
 import           Data.HashMap.Strict
 import           Debug.Trace
-import           Prelude                 hiding ( subtract, not, and )
+import           Prelude                 hiding ( subtract, not, and, or )
 --import           Data.List
 
 
@@ -349,7 +349,28 @@ and c e1 e2 = let (c',Valid y) = eval c ( Nand e1 e2)
                   in eval c' (Nand (Val y) (Val y))
 
 or ::Context->Expression->Expression-> (Context, Result)
-or = undefined
+or c e1 e2 = let (c' ,Valid y1) = eval c (Nand e1 e1)
+                 (c'',Valid y2) = eval c' (Nand e2 e2)
+                 in eval c'' (Nand (Val y1) (Val y2))   
+
+nor ::Context->Expression->Expression-> (Context, Result)
+nor c e1 e2 = let (c' ,Valid y1) = eval c (Nand e1 e1)
+                  (c'',Valid y2) = eval c' (Nand e2 e2)
+                  (c''',Valid y3) = eval c'' (Nand (Val y1) (Val y2))
+                  in eval c''' ( Nand (Val y3) (Val y3))
+
+xor ::Context->Expression->Expression-> (Context, Result)
+xor c e1 e2 = let (c' ,Valid y1) = eval c (Nand e1 e2)
+                  (c'',Valid y2) = eval c' (Nand e1 (Val y1))
+                  (c''',Valid y3) = eval c'' (Nand e2 (Val y1))
+                  in eval c''' (Nand (Val y3) (Val y2))
+
+xnor ::Context->Expression->Expression-> (Context, Result)
+xnor c e1 e2 = let (c' ,Valid y1) = eval c (Nand e1 e2)
+                   (c'',Valid y2) = eval c' (Nand e1 (Val y1))
+                   (c''',Valid y3) = eval c'' (Nand e2 (Val y1))
+                   (c'''',Valid y4) = eval c''' (Nand (Val y3) (Val y2))
+                   in eval c'''' (Nand (Val y4) (Val y4))
 
 
 --increment is sugar that rebinds a variable to that variable + 1.
