@@ -193,7 +193,7 @@ eval c (AssignIdx i e l) =
       (c''', i') = eval c'' i
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
-          then (c''', printError "Out of Bounds")
+          then (c''', printError ("AssignIdx: Out of Bounds"))
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
