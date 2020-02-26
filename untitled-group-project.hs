@@ -446,14 +446,16 @@ baddemo4 = Fn
     Assign "zero" (Val (I 0)),
     Divide (Val (I 2)) (Var "zero")
   ]
+---- 5. Accessing out of bounds element in list 
 baddemo5 :: Value
 baddemo5 = Fn
   []
   [
-    Assign "idx" (Val (I 3)),
+    Assign "idx" (Val (I 0)),
+    Assign "badLen" (Val (I 4)),
     Assign "list" (Val (List [I 2, I 3, I 4])),
     Assign "val" (Val (I 9)),
-    While (Not (Equ (Var "idx") (Val (I 4))))
+    While (Not (Equ (Var "idx") (Var "badLen")))
     [
       Assign "list" (AssignIdx (Var "idx") 
                 (Var "val") 
@@ -461,15 +463,6 @@ baddemo5 = Fn
       increment "idx"
     ],
     Var "list"
-  ]
-baddemo6 :: Value
-baddemo6 = Fn
-  []
-  [
-    Assign "list" (Val (List [I 2])),
-    AssignIdx (Val (I 3))
-              (Val (I 3))
-              (Var "list")
   ]
 
 runBadDemos :: [Value] -> [Result]
