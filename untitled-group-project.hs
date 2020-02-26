@@ -3,6 +3,9 @@ import           Debug.Trace
 import           Prelude                 hiding ( subtract )
 import           Data.List
 
+
+{- Values are the basic data types available as literals.  Note that boolean
+ - values are expressible via syntactic sugar. -}
 data Value =
     I Int
   | S String
@@ -32,9 +35,18 @@ instance Ord Value where
   (S x) <= (S y) = x <= y
   _     <= _     = False
 
+
+{- In our language, all Expressions evaluate down to a result: Results can
+ - be any of a Value, Nil, or an Error.  Nil and Error are distinct, with the
+ - former being used for, among other things, an out of bounds index on an
+ - array. -}
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
+{- Expressions are the basic unit of execution.  Each expression can take
+ - other expressions as arguments, and arguments will be recursively evaluated
+ - left to right to produce Results on which the top level expression will
+ - operate. -}
 data Expression =
     Val Value
   | Var Name
@@ -57,10 +69,20 @@ data Expression =
   | LessThan Expression Expression
   deriving(Show, Eq)
 
+{- Context is used to store the state.  State in our language consists of
+ - all variable bindings visible in the current scope. -}
 type Context = HashMap Name Value
 
+{- Domain is the semantic domain for evaluating Expressions.  Each Expression
+ - takes a Context, and returns a tuple of a Context and a Result.  The context
+ - returned by an Expression is then passed to the next Expression to be
+ - evaluated, so that state is preserved and updated as the program executes. -}
 type Domain = Context -> Expression -> (Context, Result)
 
+
+{- eval is the basic Haskell function for evaluating Expressions.  We intend
+ - to refactor some of these cases out into sub-types later on, to shorten
+ - the sheer number of cases. -}
 eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
@@ -169,6 +191,7 @@ eval c (Divide l r) =
         (Error   , _       ) -> (c, printError "Invalid operands to divide")
         (_       , Error   ) -> (c, printError "Invalid operands to divide")
         (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
+-- List Operations
 eval c (Index e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
@@ -202,11 +225,14 @@ eval c (AddLists e l) =
   in  case (e', l') of
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
+
+-- A helper function for AssignIdx
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
   if i == 0 then d : xs else x : changeIndex (i - 1) d xs
 
+--A helper function for Index.
 grabIndex :: Context -> Int -> [Value] -> (Context, Result)
 grabIndex c i [] = (c, Nil)
 grabIndex c i xs = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
@@ -219,6 +245,8 @@ printError :: String -> Result
 printError s | trace s False = undefined
 printError s                 = Error
 
+--exctractTruth is used to assign some truth value to a Result.  This allows
+--things like If and While structures to operate, of course.
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0 )) = False
 extractTruth (Valid (S "")) = False
@@ -252,6 +280,9 @@ valueIsFunc :: Value -> Bool
 valueIsFunc (Fn _ _) = True
 valueIsFunc _        = False
 
+--transferFuncDefs is used in scope creation; it takes a Context and returns
+--a new Context from which all non-function variable bindings have been
+--excised.
 transferFuncDefs :: Context -> Context
 transferFuncDefs = Data.HashMap.Strict.filter valueIsFunc
 
@@ -302,29 +333,50 @@ call c fname e =
 
 -- SUGAR
 
+--User-useable boolean literals.
 true :: Result
 true = Valid (I 1)
 
 false :: Result
 false = Nil
 
+--increment is sugar that rebinds a variable to that variable + 1.
 increment :: Name -> Expression
 increment n = Assign n (Add (Var n) (Val (I 1)))
 
+--subtract is Sugar for, well, subtraction.
 subtract :: Expression -> Expression -> Expression
 subtract l r = Add l (Multiply r (Val (I (-1))))
 
+--define is simply sugar for binding a function varaible.
 define :: Name -> [Name] -> [Expression] -> Expression
 define n ps es = Assign n (Val (Fn ps es))
 
 
 --LIBRARY and PROGRAM LAUNCHING
 
+
+--Just an empty context, useful for various purposes.
+emptyContext :: Context
+emptyContext = Data.HashMap.Strict.empty
+
+--Since our library is implemented as a Context containing bindings for
+--various library functions, we have this function to pre-populate it.
 buildLibrary :: Context -> [(Name, Value)] -> Context
 buildLibrary c [] = c
 buildLibrary c ((n, fn) : ts) =
   buildLibrary (Data.HashMap.Strict.insert n fn c) ts
 
+--The actual library; functions to be added to the library cna be placed
+--in the list.
+library :: Context
+library = buildLibrary
+  emptyContext
+  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
+
+--run is the function that actually launched a program.  It is passed a context,
+--which will generally be the library, and a function, which it will bind to
+--the name "main" in that context, and execute.
 run :: Context -> Value -> Result
 run c (Fn n e) =
   let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
@@ -333,18 +385,8 @@ run c (Fn n e) =
 run _ _ = printError
   "Could not launch program: second argument to run must be a function."
 
-emptyContext :: Context
-emptyContext = Data.HashMap.Strict.empty
-
-library :: Context
-library = buildLibrary
-  emptyContext
-  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
-
-
-listtest :: Value
-listtest = Fn ["list"] [Val (List [I 5, I 2])]
-
+--Library function that just adds an argument to itself and returns the new
+--value.
 doubler :: Value
 doubler = Fn ["x"] [Add (Var "x") (Var "x")]
 
@@ -406,8 +448,10 @@ mapdemo = Fn
     )
   ]
 
+--Helper function to run the fibonacci demo; takes an int as an argument.
 runFibonacci :: Int -> Result
 runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
 
+--Helper function to run the mapdemo demo.
 runMapDemo :: Result
 runMapDemo = run library mapdemo
