@@ -395,8 +395,72 @@ mapdemo = Fn
     )
   ]
 
+
 runFibonacci :: Int -> Result
 runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
 
 runMapDemo :: Result
 runMapDemo = run library mapdemo
+
+
+-- | Examples of bad programs that produce error results
+---- 1. Attempts to add a string to an int, result is Error
+baddemo1 :: Value
+baddemo1 = Fn
+  []
+  [
+    Assign "val1" (Val (I 2)),
+    Assign "val2" (Val (S "bad")),
+    Add (Var "val1") (Var "val2")
+  ]
+---- 2. Attempts to multiply an int literal by an undefined variable,  
+baddemo2 :: Value
+baddemo2 = Fn
+  ["val"]
+  [
+    Multiply (Val (I 2)) (Var "val")
+  ]
+---- 3. Attempts to Multiply a string by a negative number 
+baddemo3 :: Value
+baddemo3 = Fn
+  []
+  [
+    Multiply (Val (S "oops")) (Val (I (-2)))
+  ]
+---- 4. Division by zero 
+baddemo4 :: Value
+baddemo4 = Fn
+  []
+  [
+    Assign "zero" (Val (I 0)),
+    Divide (Val (I 2)) (Var "zero")
+  ]
+baddemo5 :: Value
+baddemo5 = Fn
+  []
+  [
+    Assign "idx" (Val (I 3)),
+    Assign "list" (Val (List [I 2, I 3, I 4])),
+    Assign "val" (Val (I 9)),
+    While (Not (Equ (Var "idx") (Val (I 4))))
+    [
+      Assign "list" (AssignIdx (Var "idx") 
+                (Var "val") 
+                (Var "list")),
+      increment "idx"
+    ],
+    Var "list"
+  ]
+baddemo6 :: Value
+baddemo6 = Fn
+  []
+  [
+    Assign "list" (Val (List [I 2])),
+    AssignIdx (Val (I 3))
+              (Val (I 3))
+              (Var "list")
+  ]
+
+runBadDemos :: [Value] -> [Result]
+runBadDemos []     = []
+runBadDemos (v:vs) = (run library v):(runBadDemos vs)
