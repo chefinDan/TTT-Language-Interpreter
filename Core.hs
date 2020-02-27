@@ -1,8 +1,17 @@
+module Core where
+
 import           Data.HashMap.Strict
 import           Debug.Trace
-import           Prelude                 hiding ( subtract )
-import           Data.List
+import           Prelude                 hiding ( subtract
+                                                , not
+                                                , and
+                                                , or
+                                                )
+--import           Data.List
 
+
+{- Values are the basic data types available as literals.  Note that boolean
+ - values are expressible via syntactic sugar. -}
 data Value =
     I Int
   | S String
@@ -32,9 +41,18 @@ instance Ord Value where
   (S x) <= (S y) = x <= y
   _     <= _     = False
 
+
+{- In our language, all Expressions evaluate down to a result: Results can
+ - be any of a Value, Nil, or an Error.  Nil and Error are distinct, with the
+ - former being used for, among other things, an out of bounds index on an
+ - array. -}
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
+{- Expressions are the basic unit of execution.  Each expression can take
+ - other expressions as arguments, and arguments will be recursively evaluated
+ - left to right to produce Results on which the top level expression will
+ - operate. -}
 data Expression =
     Val Value
   | Var Name
@@ -51,16 +69,24 @@ data Expression =
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
   | Assign Name Expression
-  | Or Expression Expression
-  | And Expression Expression
-  | Not Expression
+  | Nand Expression Expression
   | LessThan Expression Expression
   deriving(Show, Eq)
 
+{- Context is used to store the state.  State in our language consists of
+ - all variable bindings visible in the current scope. -}
 type Context = HashMap Name Value
 
+{- Domain is the semantic domain for evaluating Expressions.  Each Expression
+ - takes a Context, and returns a tuple of a Context and a Result.  The context
+ - returned by an Expression is then passed to the next Expression to be
+ - evaluated, so that state is preserved and updated as the program executes. -}
 type Domain = Context -> Expression -> (Context, Result)
 
+
+{- eval is the basic Haskell function for evaluating Expressions.  We intend
+ - to refactor some of these cases out into sub-types later on, to shorten
+ - the sheer number of cases. -}
 eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
@@ -84,26 +110,19 @@ eval c (Assign s ex) =
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
-eval c (Equ l r) | l' == r'  = (c'', true)
-                 | otherwise = (c'', false)
+eval c (Equ l r) | l' == r'  = (c'', Valid (I 1))
+                 | otherwise = (c'', Valid (I 0))
  where
   (c' , l') = eval c l
   (c'', r') = eval c' r
---Logical Operators
-eval c (Or e1 e2) =
+
+--Logical Operator
+eval c (Nand e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (False, False) -> (c'', false)
-        _              -> (c'', true)
-eval c (And e1 e2) =
-  let (c' , l) = eval c e1
-      (c'', r) = eval c' e2
-  in  case (extractTruth l, extractTruth r) of
-        (True, True) -> (c'', true)
-        _            -> (c'', false)
-eval c (Not e) =
-  let (c', r) = eval c e in if extractTruth r then (c', false) else (c', true)
+        (True, True) -> (c'', Valid (I 0))
+        _            -> (c'', Valid (I 1))
 --If/Else
 eval c (If cnd et ef) =
   let (c', r) = eval c cnd
@@ -169,6 +188,7 @@ eval c (Divide l r) =
         (Error   , _       ) -> (c, printError "Invalid operands to divide")
         (_       , Error   ) -> (c, printError "Invalid operands to divide")
         (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
+-- List Operations
 eval c (Index e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
@@ -193,7 +213,7 @@ eval c (AssignIdx i e l) =
       (c''', i') = eval c'' i
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
-          then (c''', printError ("AssignIdx: Out of Bounds"))
+          then (c''', printError "AssignIdx: Out of Bounds")
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
@@ -202,11 +222,14 @@ eval c (AddLists e l) =
   in  case (e', l') of
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
+
+-- A helper function for AssignIdx
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
   if i == 0 then d : xs else x : changeIndex (i - 1) d xs
 
+--A helper function for Index.
 grabIndex :: Context -> Int -> [Value] -> (Context, Result)
 grabIndex c i [] = (c, Nil)
 grabIndex c i xs = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
@@ -219,6 +242,8 @@ printError :: String -> Result
 printError s | trace s False = undefined
 printError s                 = Error
 
+--exctractTruth is used to assign some truth value to a Result.  This allows
+--things like If and While structures to operate, of course.
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0 )) = False
 extractTruth (Valid (S "")) = False
@@ -252,6 +277,9 @@ valueIsFunc :: Value -> Bool
 valueIsFunc (Fn _ _) = True
 valueIsFunc _        = False
 
+--transferFuncDefs is used in scope creation; it takes a Context and returns
+--a new Context from which all non-function variable bindings have been
+--excised.
 transferFuncDefs :: Context -> Context
 transferFuncDefs = Data.HashMap.Strict.filter valueIsFunc
 
