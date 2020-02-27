@@ -21,6 +21,21 @@ run c (Fn n e) =
 run _ _ = printError
   "Could not launch program: second argument to run must be a function."
 
+-- Testing Lessthan
+testLessThan1 :: Result
+testLessThan1 = run emptyContext ( Fn [] [ LessThan ( Val ( I 1 ) ) ( Val ( I 3 ) ) ] )
+
+testLessThan2 :: Result
+testLessThan2 = run emptyContext ( Fn [] [ LessThan ( Val ( I 4 ) ) ( Val ( I 3 ) ) ] )
+
+testLessThan3 :: Result
+testLessThan3 = run emptyContext ( Fn [] [ LessThan ( Val ( S "a" ) ) ( Val ( S "b" ) ) ] )
+
+testLessThan4 :: Result
+testLessThan4 = run emptyContext ( Fn [] [ LessThan ( Val ( I 1 ) ) ( Val ( S "b" ) ) ] )
+
+testLessThan5 :: Result
+testLessThan5 = run emptyContext ( Fn [] [ LessThan ( Val ( I 5 ) ) ( Add (Val ( I 3 ) ) (Val ( I 4 ) ) ) ] )
 
 --LIBRARY
 
