@@ -223,6 +223,20 @@ eval c (AddLists e l) =
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
 
+eval c (LessThan (Val (I n1)) (Val (I n2)))
+  | I n1 < I n2 = (c, (Val (I 1)))
+  | otherwise = (c, false)
+eval c (LessThan(Val (S s1)) (Val (S s2)))
+  | S s1 < S s2 = (c, true)
+  | otherwise = (c, false)
+eval c (LessThan (Val (I n)) (Val (S s))) = (c, printError "Error: Mismatched type when using '<' operator")
+eval c (LessThan (Val (S s)) (Val (I n))) = (c, printError "Error: Mismatched type when using '<' operator")
+eval c (LessThan l r) =
+  let (c' , l') = eval c l
+      (c'', r') = eval c' r in case (l', r') of 
+        (Val (I n1), Val (I n2)) -> (I n1) < (I n2)
+
+
 -- A helper function for AssignIdx
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
