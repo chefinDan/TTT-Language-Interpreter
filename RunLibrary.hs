@@ -144,7 +144,7 @@ mapdemo = Fn
     )
   ]
 
-  -- | Examples of bad programs that produce error results
+  -- | Examples of bad programs that produce error results or unexpected behavior
 ---- 1. Attempts to add a string to an int, result is Error
 baddemo1 :: Value
 baddemo1 = Fn
@@ -154,6 +154,7 @@ baddemo1 = Fn
     Assign "val2" (Val (S "bad")),
     Add (Var "val1") (Var "val2")
   ]
+
 ---- 2. Attempts to multiply an int literal by an undefined variable,  
 baddemo2 :: Value
 baddemo2 = Fn
@@ -176,7 +177,7 @@ baddemo4 = Fn
     Assign "zero" (Val (I 0)),
     Divide (Val (I 2)) (Var "zero")
   ]
----- 5. Accessing out of bounds element in list 
+---- 5. Accessing out of bounds element in list via while loop
 baddemo5 :: Value
 baddemo5 = Fn
   []
@@ -185,19 +186,49 @@ baddemo5 = Fn
     Assign "badLen" (Val (I 4)),
     Assign "list" (Val (List [I 2, I 3, I 4])),
     Assign "val" (Val (I 9)),
-    While (Not (Equ (Var "idx") (Var "badLen")))
+    While (Call "not" [Equ (Var "idx") (Var "badLen")])
     [
       Assign "list" (AssignIdx (Var "idx") 
                 (Var "val") 
                 (Var "list")),
       increment "idx"
-    ],
-    Var "list"
+    ]
+  ]
+---- 6. Assigning non-value to variable and calling undefined function 
+baddemo6 :: Value
+baddemo6 = Fn
+  []
+  [
+    Assign "result" (Call "func" [Val (I 2)]) 
   ]
 
-runBadDemos :: [Value] -> [Result]
-runBadDemos []     = []
-runBadDemos (v:vs) = (run library v):(runBadDemos vs)
+---- 7. Args to functions are passed by value, this demo defines a variable
+--      and a function to increment the variable. The variable is then "returned"
+--      after calling the function and te value has no changed.  
+baddemo7 :: Value 
+baddemo7 = Fn
+  []
+  [
+    Assign "num" (Val (I 5)),
+    define "add1" ["val"] [increment "val"],
+    Call "add1" [Var "num"],
+    Var "num"
+  ]
+
+
+--Helper function to run the baddemo progs 
+runBadDemo :: Int -> Result
+runBadDemo n = run library
+  (if n == 1 then baddemo1
+  else if n == 2 then baddemo2
+  else if n == 3 then baddemo3
+  else if n == 4 then baddemo4
+  else if n == 5 then baddemo5
+  else if n == 6 then baddemo6
+  else if n == 7 then baddemo7
+  else noProg n)                  
+noProg :: Int -> Value
+noProg n = Fn [] [Val (S ("runBadDemo Error: Cannot find program baddemo" ++ (show n)))]
 
 
 --Helper function to run the fibonacci demo; takes an int as an argument.

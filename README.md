@@ -70,3 +70,19 @@ To run it:
 
 The expected output is:
 	Valid (List [I 20,I 40,I 60,S "foofoofoo",S "barbarbar",S "bazbazbaz"])
+
+### "Bad program" Demos.
+There are 7 defined programs that demonstrate various erroneous or unexpected behavior.
+The programs are defined in the same way as mapdemo, and as such can be executed in the same way.
+
+To run each baddemo program do:
+  runBadDemo n 
+  *where n is an integer between 1 and 7
+
+Example output from "runBadDemo 5" is:
+  AssignIdx: Out of Bounds
+  Valid (I 0)
+
+Example output from "runBadDemo 10: is:
+  Valid (S "runBadDemo Error: Cannot find program baddemo10")
+
