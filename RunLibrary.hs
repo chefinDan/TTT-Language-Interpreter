@@ -210,7 +210,7 @@ baddemo7 = Fn
   []
   [
     Assign "num" (Val (I 5)),
-    define "add1" ["val"] [increment "val"],
+    define "add1" ["val"] [increment ":rval"],
     Call "add1" [Var "num"],
     Var "num"
   ]
