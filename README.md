@@ -6,15 +6,15 @@ Daniel Green greendan
 Nicholas Matusmoto matsumon
 Quan Nguyen nguyenq2
 
-##Introduction
+## Introduction
 
 Our language, Untitled Group Project (abbreviated TTT and pronounced 'French',)
 is a pass-by-value imperative language.  TTT's most interesting features include
 first-class functions and list operations.
 
-##Executing Programs
+## Executing Programs
 
-###TTT programs, at present, are run inside of ghci.  The functions to run programs
+### TTT programs, at present, are run inside of ghci.  The functions to run programs
 reside in the RunLibrary module.
 
 The command would be:
@@ -24,7 +24,7 @@ Programs in this language are functions, so the 'run' command is used to pass
 in a starting context and bootstrap execution.  Functions to simplify this
 are provided for the demo programs.
 
-##Demo Programs
+## Demo Programs
 
 ### Fibonacci calculator
 
