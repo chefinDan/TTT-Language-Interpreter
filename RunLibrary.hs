@@ -37,6 +37,10 @@ testLessThan4 = run emptyContext ( Fn [] [ LessThan ( Val ( I 1 ) ) ( Val ( S "b
 testLessThan5 :: Result
 testLessThan5 = run emptyContext ( Fn [] [ LessThan ( Val ( I 5 ) ) ( Add (Val ( I 3 ) ) (Val ( I 4 ) ) ) ] )
 
+-- testGreaterThanEQ1 :: Result
+-- testGreaterThanEQ1 = run emptyContext ( Fn [] [ greaterThanEQ ( Val ( I 1 ) ) ( Val ( I 3 ) ) ] )
+
+
 --LIBRARY
 
 --This module holds the library, demo programs, and the logic for launching
@@ -68,6 +72,7 @@ library = buildLibrary
   , ("xor"    , xor)
   , ("nor"    , nor)
   , ("xnor"   , xnor)
+  , ("greaterThanEQ", greaterThanEQ)
   ]
 
 
@@ -98,6 +103,12 @@ xor = Fn
 
 xnor :: Value
 xnor = Fn ["p", "q"] [Call "not" [Call "xor" [Var "p", Var "q"]]]
+
+greaterThanEQ :: Value
+greaterThanEQ = Fn ["p", "q"] [Call "not" [Call "lessthan" [LessThan (Var "p") (Var "q")]]]
+
+-- testGreaterThanEQ1 :: Result
+-- testGreaterThanEQ1 = run emptyContext ( Fn [] [ greaterThanEQ ( Val ( I 1 ) ) ( Val ( I 3 ) ) ] )
 
 --Simple naive Fibonacci implementation.
 fib :: Value
