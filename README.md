@@ -14,7 +14,7 @@ first-class functions and list operations.
 
 ## Executing Programs
 
-### TTT programs, at present, are run inside of ghci.  The functions to run programs
+TTT programs, at present, are run inside of ghci.  The functions to run programs
 reside in the RunLibrary module.
 
 The command would be:
