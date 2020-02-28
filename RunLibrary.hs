@@ -37,6 +37,9 @@ testLessThan4 = run emptyContext ( Fn [] [ LessThan ( Val ( I 1 ) ) ( Val ( S "b
 testLessThan5 :: Result
 testLessThan5 = run emptyContext ( Fn [] [ LessThan ( Val ( I 5 ) ) ( Add (Val ( I 3 ) ) (Val ( I 4 ) ) ) ] )
 
+testLessThan6 :: Result
+testLessThan6 = run emptyContext ( Fn [] [ LessThan ( Val ( I 1 ) ) ( Val ( I 1 ) ) ] )
+
 -- testGreaterThanEQ1 :: Result
 -- testGreaterThanEQ1 = run emptyContext ( Fn [] [ greaterThanEQ ( Val ( I 1 ) ) ( Val ( I 3 ) ) ] )
 
@@ -73,9 +76,10 @@ library = buildLibrary
   , ("nor"    , nor)
   , ("xnor"   , xnor)
   , ("greaterThanEQ", greaterThanEQ)
+  -- , ("lessThan", lessThan)
+  , ("lessThanEQ", lessThanEQ)
+  , ("greaterThan", greaterThan)
   ]
-
-
 
 --Library function that just adds an argument to itself and returns the new
 --value.
@@ -105,10 +109,62 @@ xnor :: Value
 xnor = Fn ["p", "q"] [Call "not" [Call "xor" [Var "p", Var "q"]]]
 
 greaterThanEQ :: Value
-greaterThanEQ = Fn ["p", "q"] [Call "not" [Call "lessthan" [LessThan (Var "p") (Var "q")]]]
+greaterThanEQ = Fn ["p", "q"] [Call "not" [LessThan (Var "p") (Var "q")]]
 
--- testGreaterThanEQ1 :: Result
--- testGreaterThanEQ1 = run emptyContext ( Fn [] [ greaterThanEQ ( Val ( I 1 ) ) ( Val ( I 3 ) ) ] )
+-- lessThan :: Value 
+-- lessThan = Fn ["p", "q"] [LessThan (Var "p") (Var "q")]
+
+lessThanEQ :: Value
+lessThanEQ = Fn ["p", "q"] [Call "or" [Equ (Var "p") (Var "q"), LessThan (Var "p") (Var "q")]]
+
+greaterThan :: Value
+greaterThan = Fn ["p", "q"] [Call "not" [Call "lessThanEQ" [Var "p", Var "q"]]]
+
+-- some test cases for lessThanEQ
+testLessThanEQ1 :: Result
+testLessThanEQ1 = run library (Fn [] [Call "lessThanEQ" [Val (I 1), Val (I 2)]])
+
+testLessThanEQ2 :: Result
+testLessThanEQ2 = run library (Fn [] [Call "lessThanEQ" [Val (I 1), Val (I 1)]])
+
+testLessThanEQ3 :: Result
+testLessThanEQ3 = run library (Fn [] [Call "lessThanEQ" [Val (I 2), Val (I 1)]])
+
+-- test cases for greaterThan
+testGreaterThan1 :: Result
+testGreaterThan1 = run library (Fn [] [Call "greaterThan" [Val (I 1), Val (I 2)]])
+
+testGreaterThan2 :: Result
+testGreaterThan2 = run library (Fn [] [Call "greaterThan" [Val (I 1), Val (I 1)]])
+
+testGreaterThan3 :: Result
+testGreaterThan3 = run library (Fn [] [Call "greaterThan" [Val (I 2), Val (I 1)]])
+
+testGreaterThan4 :: Result
+testGreaterThan4 = run library (Fn [] [Call "greaterThan" [Val (S "1"), Val (I 2)]])
+
+testGreaterThan5 :: Result
+testGreaterThan5 = run library (Fn [] [Call "greaterThan" [Val (S "Apple"), Val (S "Tesla")]])
+
+testGreaterThan6 :: Result
+testGreaterThan6 = run library (Fn [] [Call "greaterThan" [Add (Val (I 2)) (Val (I 1)), subtract (Val (I 5)) (Val (I 1))]])
+
+
+-- some test cases for greaterThanEQ
+
+testGreaterThanEQ1 :: Result
+testGreaterThanEQ1 = run library (Fn [] [Call "greaterThanEQ" [Val (I 10), Val (I 20)]])
+
+testGreaterThanEQ2 :: Result
+testGreaterThanEQ2 = run library (Fn [] [Call "greaterThanEQ" [Val (S "a"), Val (S "ccc")]])
+
+testGreaterThanEQ3 :: Result
+testGreaterThanEQ3 = run library (Fn [] [Call "greaterThanEQ" [Val (I 10), Val (S "ccc")]])
+
+testGreaterThanEQ4 :: Result
+testGreaterThanEQ4 = run library (Fn [] [Call "greaterThanEQ" [Val (I 10), Val (I 10)]])
+
+
 
 --Simple naive Fibonacci implementation.
 fib :: Value

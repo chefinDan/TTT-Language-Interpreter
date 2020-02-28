@@ -237,6 +237,10 @@ eval c (LessThan l r) =
         (Valid (I n1), Valid (I n2))
           | (I n1) < (I n2) -> (c, Valid (I 1))
           | otherwise -> (c, (Valid (I 0)))
+        (Valid (S s1), Valid (S s2)) 
+          | S s1 < S s2 -> (c, (Valid (I 1)))
+          | otherwise -> (c, (Valid (I 0)))  
+        (_) -> (c, printError "Error: Mismatched type when using '<' operator") 
 
 
 
