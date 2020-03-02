@@ -11,16 +11,9 @@ data Value =
   | List [Value]
   deriving (Show, Eq)
 
+--Just types to make it clear what strings are being used for.
 type Name = String
-
 type Error = String
-
-data Result = Valid Value | Nil
-  deriving (Show, Eq)
-
-type Return = Either Result Error
-
-
 
 data Expression =
     Lit Value
@@ -50,11 +43,28 @@ data ListOp = Index Expression Expression
  - all variable bindings visible in the current scope. -}
 type Context = Map Name Value
 
+
+--Result is use to hold the results of expression evaluations, other than
+--errors.
+data Result = Valid Value | Nil
+  deriving (Show, Eq)
+
+--Return is is a wrapper around a Result and Error, intended to allow early
+--termination of execution if an Error results from any evaluation.
+type Return = Either Result Error
+
 type Domain = Context -> (Context, Return)
 
 eval :: Expression -> Domain
-eval = undefined
 
+--Literal Expression.
+eval (Lit v) c = (c, Left (Valid v))
+--Variable dereferencing.
+eval (Dereference s) c = case Data.Map.Strict.lookup s c of
+  Just x  -> (c, Left (Valid x))
+  Nothing -> (c, Right ("Undefined reference to variable " ++ s ++ "."))
+--Function calling: see helper function call.
+eval (Call s args) c = call s args c
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -66,7 +76,7 @@ are nested, then those rvalues have a use.  And for a function or a program
 return value of the function. -}
 
 
-foldExpressions :: [Expression] -> Context -> (Context, Return)
+foldExpressions :: [Expression] -> Domain
 foldExpressions (e : es) c =
   let (c', r) = eval e c
   in  case (r, es) of
@@ -109,18 +119,24 @@ transferFuncDefs = Data.Map.Strict.filter valueIsFunc
 --any modifications to the original context produced as side effects of evaluating
 --the argument list; the second is the bound arguments for the new scope.
 
+type BindResult = Either (ParentScope, FunctionScope) (ParentScope, Error)
+
 bindArguments
-  :: (ParentScope, FunctionScope)
-  -> [Name]
-  -> [Expression]
-  -> (ParentScope, FunctionScope)
-bindArguments (ps, fs) [] _  = (ps, fs)
-bindArguments (ps, fs) _  [] = (ps, fs)
+  :: (ParentScope, FunctionScope) -> [Name] -> [Expression] -> BindResult
+bindArguments (ps, fs) [] [] = Left (ps, fs)
+bindArguments (ps, fs) _ [] =
+  Right (ps, "Error: Mismatch between parameters and arguments.")
+bindArguments (ps, fs) [] _ =
+  Right (ps, "Error: Mismatch between parameters and arguments.")
 bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval e ps
-  in  case r of
-        Left (Valid v) -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
-        _       -> bindArguments (ps', fs) ns es
+  in
+    case r of
+      Left (Valid v) ->
+        bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
+      Left Nil -> bindArguments (ps', fs) ns es
+      Right err ->
+        Right (ps', "Error in binding scope for function call:" ++ err)
 
 
 {- call calls a function.  The general idea is that the list of expressions
@@ -135,16 +151,23 @@ result of the last body expression.-}
 call :: Name -> [Expression] -> Context -> (Context, Return)
 call fname e c =
   let fn = Data.Map.Strict.lookup fname c
-  in  case fn of
-        Just (Fn params body) ->
-          let (c'    , scope) = bindArguments (c, transferFuncDefs c) params e
-              (scope', r    ) = foldExpressions body scope
-          in  (Data.Map.Strict.union (transferFuncDefs scope') c', r)
-        Nothing ->
-          (c, Right ("Error :Function call to " ++ fname ++ " failed: no such function."))
-        _ ->
-          ( c
-          , Right ("Error: Function call to"
-            ++ fname
-            ++ "failed: name is bound to non-function variable.")
+  in
+    case fn of
+      Just (Fn params body) ->
+        let bindings = bindArguments (c, transferFuncDefs c) params e
+        in  case bindings of
+              Left  (c', fnScope) -> foldExpressions body fnScope
+              Right (c', err    ) -> (c', Right err)
+      Nothing ->
+        ( c
+        , Right
+          ("Error :Function call to " ++ fname ++ " failed: no such function.")
+        )
+      _ ->
+        ( c
+        , Right
+          (  "Error: Function call to"
+          ++ fname
+          ++ "failed: name is bound to non-function variable."
           )
+        )
