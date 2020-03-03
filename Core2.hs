@@ -19,8 +19,8 @@ data Expression =
     Lit Value
   | Dereference Name
   | Call Name [Expression] --Call a function.  Name of function, arguments.
-  | ArithOp
-  | ListOp
+  | ArithExp ArithOp
+  | ListExp ListOp
   | Equ Expression Expression
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
@@ -32,12 +32,14 @@ data Expression =
 data ArithOp = Add Expression Expression
              | Multiply Expression Expression
              | Divide Expression Expression
+             deriving(Show, Eq)
 
 data ListOp = Index Expression Expression
             | AssignIdx Expression Expression Expression
             | Append Expression Expression
             | Prepend Expression Expression
             | AddLists Expression Expression
+            deriving(Show, Eq)
 
 {- Context is used to store the state.  State in our language consists of
  - all variable bindings visible in the current scope. -}
@@ -53,18 +55,22 @@ data Result = Valid Value | Nil
 --termination of execution if an Error results from any evaluation.
 type Return = Either Result Error
 
+{- Domain is the semantic domain for evaluating expressions. -}
 type Domain = Context -> (Context, Return)
 
+{- eval is the function for evaluating expressions. -}
 eval :: Expression -> Domain
 
 --Literal Expression.
-eval (Lit v) c = (c, Left (Valid v))
+eval (Lit         v) c = (c, Left (Valid v))
 --Variable dereferencing.
 eval (Dereference s) c = case Data.Map.Strict.lookup s c of
   Just x  -> (c, Left (Valid x))
   Nothing -> (c, Right ("Undefined reference to variable " ++ s ++ "."))
 --Function calling: see helper function call.
 eval (Call s args) c = call s args c
+
+eval (ArithExp op) c   = arithHelper op c
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -75,7 +81,6 @@ are nested, then those rvalues have a use.  And for a function or a program
 (which is a function itself,) the final rvalue produced serves as the overall
 return value of the function. -}
 
-
 foldExpressions :: [Expression] -> Domain
 foldExpressions (e : es) c =
   let (c', r) = eval e c
@@ -85,8 +90,28 @@ foldExpressions (e : es) c =
         _               -> foldExpressions es c'
 foldExpressions [] c = (c, Left Nil)
 
+arithHelper :: ArithOp -> Domain
+arithHelper (Add l r) c =
+  let
+    (c' , l') = eval l c
+    (c'', r') = eval r c'
+  in
+    case (l', r') of
+      (Right errL, Right errR) ->
+        (c'', Right (errString ++ errL ++ ", " ++ errR))
+      (Right errL, _         ) -> (c'', Right (errString ++ errL))
+      (_         , Right errR) -> (c'', Right (errString ++ errR))
+      (Left (Valid (I a)), Left (Valid (I b))) ->
+        (c'', Left (Valid (I (a + b))))
+      (Left (Valid (S a)), Left (Valid (S b))) ->
+        (c'', Left (Valid (S (a ++ b))))
+      _ -> (c'', Right (errString ++ "Operands are of non-addable types."))
+  where errString = "Invalid operands to add:"
+arithHelper (Multiply l r) c = undefined
+arithHelper (Divide   l r) c = undefined
 
---exctractTruth is used to assign some truth value to a Result.  This allows
+
+--extractTruth is used to assign some truth value to a Result.  This allows
 --things like If and While structures to operate, of course.
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0 )) = False
