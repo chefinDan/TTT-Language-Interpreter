@@ -13,14 +13,23 @@ import           Prelude                 hiding ( subtract
 --run is the function that actually launched a program.  It is passed a context,
 --which will generally be the library, and a function, which it will bind to
 --the name "main" in that context, and execute.
-run :: Context -> Value -> Result
-run c (Fn n e) =
+run :: Value -> Context -> IO ()
+run (Fn n e) c =
   let c'     = Data.Map.Strict.insert "main" (Fn n e) c
-      (_, r) = call c' "main" []
-  in  r
-run _ _ = printError
-  "Could not launch program: second argument to run must be a function."
+      (_, r) = call "main" [] c'
+  in  unwrapReturn r
+run _ _ = 
+  print "Could not launch program: second argument to run must be a function."
 
+unwrapReturn :: Return -> IO ()
+unwrapReturn (Right err) = print err
+unwrapReturn (Left rslt) =
+  case rslt of 
+    Nil -> print "Nil"
+    Valid (I i) -> print i
+    Valid (S s) -> print s
+    Valid (List l) -> print l
+    Valid (Fn n fn) -> print fn
 
 --LIBRARY
 
@@ -34,10 +43,13 @@ emptyContext = Data.Map.Strict.empty
 
 --Since our library is implemented as a Context containing bindings for
 --various library functions, we have this function to pre-populate it.
+
 buildLibrary :: Context -> [(Name, Value)] -> Context
 buildLibrary c [] = c
 buildLibrary c ((n, fn) : ts) =
   buildLibrary (Data.Map.Strict.insert n fn c) ts
+
+
 
 --The actual library; functions to be added to the library cna be placed
 --in the list.
@@ -45,14 +57,14 @@ library :: Context
 library = buildLibrary
   emptyContext
   [ ("doubler", doubler)
-  , ("fib"    , fib)
-  , ("maplist", maplist)
-  , ("not"    , not)
-  , ("and"    , and)
-  , ("or"     , or)
-  , ("xor"    , xor)
-  , ("nor"    , nor)
-  , ("xnor"   , xnor)
+--  , ("fib"    , fib)
+--  , ("maplist", maplist)
+--  , ("not"    , not)
+--  , ("and"    , and)
+--  , ("or"     , or)
+--  , ("xor"    , xor)
+--  , ("nor"    , nor)
+--  , ("xnor"   , xnor)
   ]
 
 
@@ -60,7 +72,13 @@ library = buildLibrary
 --Library function that just adds an argument to itself and returns the new
 --value.
 doubler :: Value
-doubler = Fn ["x"] [Add (Var "x") (Var "x")]
+doubler = Fn ["x"] [ArithExp (Add (Dereference "x") (Dereference "x"))]
+
+runDoubler :: Int -> IO ()
+runDoubler n = run (Fn [] [Call "doubler" [Lit (I n)]]) library
+
+
+{-
 
 --Logical operation functions, all deriving from the Core Nand.
 not :: Value
@@ -248,3 +266,5 @@ runMapDemo = run library mapdemo
 --
 --   >>> eval emptyContext (Add (Val (I 5)) (Val (S "foo")))
 --   Error
+--
+--   -}
