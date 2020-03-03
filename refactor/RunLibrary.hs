@@ -272,19 +272,4 @@ noProg :: Int -> Value
 noProg n = Fn [] [Lit (S ("runBadDemo Error: Cannot find program baddemo" ++ (show n)))]
 
 
---Helper function to run the fibonacci demo; takes an int as an argument.
-runFibonacci :: Int -> Result
-runFibonacci n = run library (Fn [] [Call "fib" [Lit (I n)]])
-
-
--- |
---   >>> eval emptyContext (Lit (I 5))
---   (fromList [],Valid (I 5))
---
---   >>> runFibonacci 10
---   55
---
---   >>> eval emptyContext (Add (Lit (I 5)) (Lit (S "foo")))
---   Error
---
---   -}
+-}

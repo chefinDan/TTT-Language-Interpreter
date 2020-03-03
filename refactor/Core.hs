@@ -57,16 +57,16 @@ type Domain = Context -> (Context, Result)
 {- eval is the function for evaluating expressions. -}
 eval :: Expression -> Domain
 
---Literal Expression.
+--LITERAL
 eval (Lit         v) c = (c, Valid v)
---Variable dereferencing.
+--VARIABLE DEREFERENCING
 eval (Dereference s) c = case Data.Map.Strict.lookup s c of
   Just x  -> (c, Valid x)
   Nothing -> (c, Error ("Undefined reference to variable " ++ s ++ "."))
---Function calling: see helper function call.
+--FUNCTION CALLING: see helper function call.
 eval (Call s args) c = call s args c
 
---Arithmetic: uses a helper function.
+--ARITHMETIC: uses a helper function.
 eval (ArithExp op) c = arithHelper op c
 
 --EQUALITY
@@ -111,10 +111,13 @@ eval (Bind s ex) c =
       (c', Nil) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
 
 --LIST OPERATIONS
-eval (ListExp op) c = listHelper op c
+eval (ListExp op  ) c = listHelper op c
+
+--COMPARATORS
+eval (LessThan l r) c = undefined --TODO
 
 --Emergency error handling.
-eval e c = (c, Error ("UNHANDLED EVAL CASE: " ++ show e))
+eval e              c = (c, Error ("UNHANDLED EVAL CASE: " ++ show e))
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -149,7 +152,7 @@ arithHelper (Add l r) c =
         (Valid (I a), Valid (I b)) -> (c'', Valid (I (a + b)))
         (Valid (S a), Valid (S b)) -> (c'', Valid (S (a ++ b)))
         _ -> (c'', Error (errString ++ "Operands are of non-addable types."))
-  where errString = "Invalid operands to add:"
+  where errString = "Invalid operands to add: "
 --MULTIPLICATION
 arithHelper (Multiply (Lit (I l)) (Lit (I r))) c = (c, Valid (I (l * r)))
 --Multiplying a string by an integer should, because it's fun, return that 
@@ -228,6 +231,7 @@ grabIndex :: Int -> [Value] -> Context -> (Context, Result)
 grabIndex i [] c = (c, Nil)
 grabIndex i xs c = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
 
+
 --extractTruth is used to assign some truth value to a Result.  This allows
 --things like If and While structures to operate, of course.
 extractTruth :: Result -> Bool
@@ -250,12 +254,12 @@ valueIsFunc _        = False
 --a new Context from which all non-function variable bindings have been
 --excised.
 
+--Nonce types for clarity.
 type ParentScope = Context
 type FunctionScope = Context
 
 transferFuncDefs :: ParentScope -> FunctionScope
 transferFuncDefs = Data.Map.Strict.filter valueIsFunc
-
 
 --For bind arguments, we produce a tuple of two Contexts; the first is to preserve
 --any modifications to the original context produced as side effects of evaluating
