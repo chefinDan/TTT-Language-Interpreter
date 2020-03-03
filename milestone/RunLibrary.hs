@@ -2,7 +2,7 @@ module RunLibrary where
 
 import           Core
 import           Sugar
-import           Data.HashMap.Strict
+import           Data.Map.Strict
 import           Prelude                 hiding ( subtract
                                                 , and
                                                 , or
@@ -15,7 +15,7 @@ import           Prelude                 hiding ( subtract
 --the name "main" in that context, and execute.
 run :: Context -> Value -> Result
 run c (Fn n e) =
-  let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
+  let c'     = Data.Map.Strict.insert "main" (Fn n e) c
       (_, r) = call c' "main" []
   in  r
 run _ _ = printError
@@ -30,14 +30,14 @@ run _ _ = printError
 
 --Just an empty context, useful for various purposes.
 emptyContext :: Context
-emptyContext = Data.HashMap.Strict.empty
+emptyContext = Data.Map.Strict.empty
 
 --Since our library is implemented as a Context containing bindings for
 --various library functions, we have this function to pre-populate it.
 buildLibrary :: Context -> [(Name, Value)] -> Context
 buildLibrary c [] = c
 buildLibrary c ((n, fn) : ts) =
-  buildLibrary (Data.HashMap.Strict.insert n fn c) ts
+  buildLibrary (Data.Map.Strict.insert n fn c) ts
 
 --The actual library; functions to be added to the library cna be placed
 --in the list.
@@ -144,7 +144,7 @@ mapdemo = Fn
     )
   ]
 
-  -- | Examples of bad programs that produce error results or unexpected behavior
+  --  Examples of bad programs that produce error results or unexpected behavior
 ---- 1. Attempts to add a string to an int, result is Error
 baddemo1 :: Value
 baddemo1 = Fn
@@ -238,3 +238,13 @@ runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
 --Helper function to run the mapdemo demo.
 runMapDemo :: Result
 runMapDemo = run library mapdemo
+
+-- |
+--   >>> eval emptyContext (Val (I 5))
+--   (fromList [],Valid (I 5))
+--
+--   >>> runFibonacci 10
+--   Valid (I 55)
+--
+--   >>> eval emptyContext (Add (Val (I 5)) (Val (S "foo")))
+--   Error

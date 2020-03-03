@@ -1,6 +1,6 @@
 module Core where
 
-import           Data.HashMap.Strict
+import           Data.Map.Strict
 import           Debug.Trace
 import           Prelude                 hiding ( subtract
                                                 , not
@@ -75,7 +75,7 @@ data Expression =
 
 {- Context is used to store the state.  State in our language consists of
  - all variable bindings visible in the current scope. -}
-type Context = HashMap Name Value
+type Context = Map Name Value
 
 {- Domain is the semantic domain for evaluating Expressions.  Each Expression
  - takes a Context, and returns a tuple of a Context and a Result.  The context
@@ -91,7 +91,7 @@ eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
 eval c (Val v) = (c, Valid v)
-eval c (Var s) = case Data.HashMap.Strict.lookup s c of
+eval c (Var s) = case Data.Map.Strict.lookup s c of
   Just x  -> (c, Valid x)
   Nothing -> (c, printError ("Undefined reference to variable " ++ s ++ "."))
 --Assignment of variable.  Assigning an Error produces another Error, assigning
@@ -101,12 +101,12 @@ eval c (Assign s ex) =
   let val = eval c ex
   in  case val of
         (c', Valid v) -> (c'', Valid v)
-          where c'' = Data.HashMap.Strict.insert s v c'
+          where c'' = Data.Map.Strict.insert s v c'
         (c', Error) ->
           ( c'
           , printError ("Could not assign non-value to variable " ++ s ++ ".")
           )
-        (c', Nil) -> (c'', Nil) where c'' = Data.HashMap.Strict.delete s c'
+        (c', Nil) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
@@ -236,7 +236,7 @@ grabIndex c i xs = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
 
 -- substring: for String division
 substring :: Int -> Value -> Value
-substring x (S text) = S (take n text) where n = length text `div` x
+substring x (S text) = S (Prelude.take n text) where n = length text `div` x
 --The trace thing for error reporting comes from: https://stackoverflow.com/questions/42700743/how-can-i-print-the-parameters-of-a-function-before-evaluation-in-haskell
 printError :: String -> Result
 printError s | trace s False = undefined
@@ -281,7 +281,7 @@ valueIsFunc _        = False
 --a new Context from which all non-function variable bindings have been
 --excised.
 transferFuncDefs :: Context -> Context
-transferFuncDefs = Data.HashMap.Strict.filter valueIsFunc
+transferFuncDefs = Data.Map.Strict.filter valueIsFunc
 
 --For bind arguments, we produce a tuple of two Contexts; the first is to preserve
 --any modifications to the original context produced as side effects of evaluating
@@ -294,7 +294,7 @@ bindArguments (ps, fs) _  [] = (ps, fs)
 bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval ps e
   in  case r of
-        Valid v -> bindArguments (ps', Data.HashMap.Strict.insert n v fs) ns es
+        Valid v -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
         _       -> bindArguments (ps', fs) ns es
 
 {- call calls a function.  The general idea is that the list of expressions provided
@@ -308,12 +308,12 @@ then evaluates down to the (possibly modifed) parent scope and the result of
   the last body expression.-}
 call :: Context -> Name -> [Expression] -> (Context, Result)
 call c fname e =
-  let fn = Data.HashMap.Strict.lookup fname c
+  let fn = Data.Map.Strict.lookup fname c
   in  case fn of
         Just (Fn params body) ->
           let (c'    , scope) = bindArguments (c, transferFuncDefs c) params e
               (scope', r    ) = foldExpressions scope body
-          in  (Data.HashMap.Strict.union (transferFuncDefs scope') c', r)
+          in  (Data.Map.Strict.union (transferFuncDefs scope') c', r)
         Nothing ->
           ( c
           , printError
