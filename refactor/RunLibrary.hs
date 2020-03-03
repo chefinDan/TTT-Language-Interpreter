@@ -19,17 +19,17 @@ run (Fn n e) c =
       (_, r) = call "main" [] c'
   in  unwrapReturn r
 run _ _ = 
-  print "Could not launch program: second argument to run must be a function."
+  putStrLn "Could not launch program: second argument to run must be a function."
 
-unwrapReturn :: Return -> IO ()
-unwrapReturn (Right err) = print err
-unwrapReturn (Left rslt) =
+unwrapReturn :: Result -> IO ()
+unwrapReturn (Error err) = putStrLn err
+unwrapReturn Nil = putStrLn "Nil"
+unwrapReturn (Valid rslt) =
   case rslt of 
-    Nil -> print "Nil"
-    Valid (I i) -> print i
-    Valid (S s) -> print s
-    Valid (List l) -> print l
-    Valid (Fn n fn) -> print fn
+    (I i) -> print i
+    (S s) -> putStrLn s
+    (List l) -> print l
+    (Fn n fn) -> print fn
 
 --LIBRARY
 

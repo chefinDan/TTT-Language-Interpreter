@@ -48,25 +48,21 @@ type Context = Map Name Value
 
 --Result is use to hold the results of expression evaluations, other than
 --errors.
-data Result = Valid Value | Nil
+data Result = Valid Value | Nil | Error String
   deriving (Show, Eq)
 
---Return is is a wrapper around a Result and Error, intended to allow early
---termination of execution if an Error results from any evaluation.
-type Return = Either Result Error
-
 {- Domain is the semantic domain for evaluating expressions. -}
-type Domain = Context -> (Context, Return)
+type Domain = Context -> (Context, Result)
 
 {- eval is the function for evaluating expressions. -}
 eval :: Expression -> Domain
 
 --Literal Expression.
-eval (Lit         v) c = (c, Left (Valid v))
+eval (Lit         v) c = (c, Valid v)
 --Variable dereferencing.
 eval (Dereference s) c = case Data.Map.Strict.lookup s c of
-  Just x  -> (c, Left (Valid x))
-  Nothing -> (c, Right ("Undefined reference to variable " ++ s ++ "."))
+  Just x  -> (c, Valid x)
+  Nothing -> (c, Error ("Undefined reference to variable " ++ s ++ "."))
 --Function calling: see helper function call.
 eval (Call s args) c = call s args c
 
@@ -85,10 +81,10 @@ foldExpressions :: [Expression] -> Domain
 foldExpressions (e : es) c =
   let (c', r) = eval e c
   in  case (r, es) of
-        (Right err, _ ) -> (c', Right err)
+        (Error err, _ ) -> (c', Error err)
         (_        , []) -> (c', r)
         _               -> foldExpressions es c'
-foldExpressions [] c = (c, Left Nil)
+foldExpressions [] c = (c, Nil)
 
 arithHelper :: ArithOp -> Domain
 arithHelper (Add l r) c =
@@ -97,15 +93,15 @@ arithHelper (Add l r) c =
     (c'', r') = eval r c'
   in
     case (l', r') of
-      (Right errL, Right errR) ->
-        (c'', Right (errString ++ errL ++ ", " ++ errR))
-      (Right errL, _         ) -> (c'', Right (errString ++ errL))
-      (_         , Right errR) -> (c'', Right (errString ++ errR))
-      (Left (Valid (I a)), Left (Valid (I b))) ->
-        (c'', Left (Valid (I (a + b))))
-      (Left (Valid (S a)), Left (Valid (S b))) ->
-        (c'', Left (Valid (S (a ++ b))))
-      _ -> (c'', Right (errString ++ "Operands are of non-addable types."))
+      (Error errL, Error errR) ->
+        (c'', Error (errString ++ indent errL ++ indent errR))
+      (Error errL, _         ) -> (c'', Error (errString ++ indent errL))
+      (_         , Error errR) -> (c'', Error (errString ++ indent errR))
+      (Valid (I a), Valid (I b)) ->
+        (c'', Valid (I (a + b)))
+      (Valid (S a), Valid (S b)) ->
+        (c'', Valid (S (a ++ b)))
+      _ -> (c'', Error (errString ++ "Operands are of non-addable types."))
   where errString = "Invalid operands to add:"
 arithHelper (Multiply l r) c = undefined
 arithHelper (Divide   l r) c = undefined
@@ -144,24 +140,24 @@ transferFuncDefs = Data.Map.Strict.filter valueIsFunc
 --any modifications to the original context produced as side effects of evaluating
 --the argument list; the second is the bound arguments for the new scope.
 
-type BindResult = Either (ParentScope, FunctionScope) (ParentScope, Error)
+type BindResult = Either (ParentScope, FunctionScope) (ParentScope, Result)
 
 bindArguments
   :: (ParentScope, FunctionScope) -> [Name] -> [Expression] -> BindResult
 bindArguments (ps, fs) [] [] = Left (ps, fs)
 bindArguments (ps, fs) _ [] =
-  Right (ps, "Error: Mismatch between parameters and arguments.")
+  Right (ps, Error "Error: Mismatch between parameter and argument counts.")
 bindArguments (ps, fs) [] _ =
-  Right (ps, "Error: Mismatch between parameters and arguments.")
+  Right (ps, Error "Error: Mismatch between parameter and argument counts.")
 bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval e ps
   in
     case r of
-      Left (Valid v) ->
+      Valid v ->
         bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
-      Left Nil -> bindArguments (ps', fs) ns es
-      Right err ->
-        Right (ps', "Error in binding scope for function call:" ++ err)
+      Nil -> bindArguments (ps', fs) ns es
+      Error err ->
+        Right (ps', Error ("Error in binding scope for function call:" ++ indent err))
 
 
 {- call calls a function.  The general idea is that the list of expressions
@@ -173,7 +169,7 @@ the call is complete, any functions defined inside the call are transferred to
 the original scope, overwriting in case of collision with an existing name.  The
 call itself then evaluates down to the (possibly modifed) parent scope and the
 result of the last body expression.-}
-call :: Name -> [Expression] -> Context -> (Context, Return)
+call :: Name -> [Expression] -> Context -> (Context, Result)
 call fname e c =
   let fn = Data.Map.Strict.lookup fname c
   in
@@ -182,17 +178,20 @@ call fname e c =
         let bindings = bindArguments (c, transferFuncDefs c) params e
         in  case bindings of
               Left  (c', fnScope) -> foldExpressions body fnScope
-              Right (c', err    ) -> (c', Right err)
+              Right (c', Error err) -> (c', Error err)
       Nothing ->
         ( c
-        , Right
+        , Error
           ("Error :Function call to " ++ fname ++ " failed: no such function.")
         )
       _ ->
         ( c
-        , Right
+        , Error
           (  "Error: Function call to"
           ++ fname
           ++ "failed: name is bound to non-function variable."
           )
         )
+
+indent :: String -> String
+indent s = "\n\t" ++ s
