@@ -66,7 +66,55 @@ eval (Dereference s) c = case Data.Map.Strict.lookup s c of
 --Function calling: see helper function call.
 eval (Call s args) c = call s args c
 
-eval (ArithExp op) c   = arithHelper op c
+--Arithmetic: uses a helper function.
+eval (ArithExp op) c = arithHelper op c
+
+--EQUALITY
+eval (Equ l r) c | l' == r'  = (c'', Valid (I 1))
+                 | otherwise = (c'', Valid (I 0))
+ where
+  (c' , l') = eval l c
+  (c'', r') = eval r c'
+
+--IF/ELSE
+eval (If cnd et ef) c =
+  let (c', r) = eval cnd c
+  in
+    case r of
+      (Error err) ->
+        (c', Error ("Error in evaluating If condition:" ++ indent err))
+      _ ->
+        if extractTruth r then foldExpressions et c' else foldExpressions ef c'
+
+--WHILE
+eval (While cnd es) c =
+  let (c', r) = eval cnd c
+  in  case r of
+        (Error err) ->
+          (c', Error ("Error in evaluating While condition:" ++ indent err))
+        _ -> if extractTruth r
+          then let (c'', r') = foldExpressions es c' in eval (While cnd es) c''
+          else (c', r)
+
+--VARIABLE BINDING
+eval (Bind s ex) c =
+  let val = eval ex c
+  in
+    case val of
+      (c', Valid v) -> (c'', Valid v)
+        where c'' = Data.Map.Strict.insert s v c'
+      (c', Error err) ->
+        ( c'
+        , Error
+          ("Could not assign non-value to variable " ++ s ++ "." ++ indent err)
+        )
+      (c', Nil) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
+
+--LIST OPERATIONS
+eval (ListExp op) c = listHelper op c
+
+--Emergency error handling.
+eval e c = (c, Error ("UNHANDLED EVAL CASE: " ++ show e))
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -86,26 +134,99 @@ foldExpressions (e : es) c =
         _               -> foldExpressions es c'
 foldExpressions [] c = (c, Nil)
 
+{- arithHelper is simply a helper function to handle arithmetic Expression
+ - evaluations. -}
 arithHelper :: ArithOp -> Domain
+--ADDITION
 arithHelper (Add l r) c =
-  let
-    (c' , l') = eval l c
-    (c'', r') = eval r c'
-  in
-    case (l', r') of
-      (Error errL, Error errR) ->
-        (c'', Error (errString ++ indent errL ++ indent errR))
-      (Error errL, _         ) -> (c'', Error (errString ++ indent errL))
-      (_         , Error errR) -> (c'', Error (errString ++ indent errR))
-      (Valid (I a), Valid (I b)) ->
-        (c'', Valid (I (a + b)))
-      (Valid (S a), Valid (S b)) ->
-        (c'', Valid (S (a ++ b)))
-      _ -> (c'', Error (errString ++ "Operands are of non-addable types."))
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
+        (Error errL, Error errR) ->
+          (c'', Error (errString ++ indent errL ++ indent errR))
+        (Error errL , _          ) -> (c'', Error (errString ++ indent errL))
+        (_          , Error errR ) -> (c'', Error (errString ++ indent errR))
+        (Valid (I a), Valid (I b)) -> (c'', Valid (I (a + b)))
+        (Valid (S a), Valid (S b)) -> (c'', Valid (S (a ++ b)))
+        _ -> (c'', Error (errString ++ "Operands are of non-addable types."))
   where errString = "Invalid operands to add:"
-arithHelper (Multiply l r) c = undefined
-arithHelper (Divide   l r) c = undefined
+--MULTIPLICATION
+arithHelper (Multiply (Lit (I l)) (Lit (I r))) c = (c, Valid (I (l * r)))
+--Multiplying a string by an integer should, because it's fun, return that 
+--string concatenated that many times.
+arithHelper (Multiply (Lit (S l)) (Lit (I r))) c
+  | r < 0     = (c, Error "Cannot multiply a string by a negative number.")
+  | r == 0    = (c, Valid (S ""))
+  | r == 1    = (c, Valid (S l))
+  | otherwise = (c', Valid (S (l ++ l')))
+ where
+  (c', Valid (S l')) = arithHelper (Multiply (Lit (S l)) (Lit (I (r - 1)))) c
+--Rather than repeat the boilerplate, we'll just define I * S as S * I.
+arithHelper (Multiply (Lit (I l)) (Lit (S r))) c =
+  arithHelper (Multiply (Lit (S r)) (Lit (I l))) c
+arithHelper (Multiply (Lit _) (Lit _)) c =
+  (c, Error "Invalid operands to multiply.")
+arithHelper (Multiply l r) c =
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
+        (Nil    , y      ) -> (c'', y)
+        (x      , Nil    ) -> (c'', x)
+        (Error l, Error r) -> (c'', Error (errStr ++ indent l ++ indent r))
+        (Error l, _      ) -> (c'', Error (errStr ++ indent l))
+        (_      , Error r) -> (c'', Error (errStr ++ indent r))
+        (Valid a, Valid b) -> arithHelper (Multiply (Lit a) (Lit b)) c
+  where errStr = "Invalid operands to multiply:"
+arithHelper (Divide l r) c = undefined --TODO
 
+{-listHelper implements List operations.-}
+listHelper :: ListOp -> Domain
+--INDEX INTO LIST
+listHelper (Index e l) c =
+  let (c' , e') = eval e c
+      (c'', l') = eval l c'
+  in  case (e', l') of
+        (Valid (I a), Valid (List xs)) -> grabIndex a xs c''
+        (Error errL, Error errR) ->
+          (c'', Error (errStr ++ indent errL ++ indent errR))
+        (Error errL, _         ) -> (c'', Error (errStr ++ indent errL))
+        (_         , Error errR) -> (c'', Error (errStr ++ indent errR))
+        _                        -> (c'', Error errStr)
+  where errStr = "Invalid operands to Index."
+
+listHelper (Append  e l) c = undefined --TODO
+listHelper (Prepend e l) c = undefined --TODO
+
+--ASSIGN TO LIST INDEX
+listHelper (AssignIdx i e l) c =
+  let (c'  , e') = eval e c
+      (c'' , l') = eval l c'
+      (c''', i') = eval i c''
+  in  case (i', e', l') of
+        (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
+          then (c''', Error "AssignIdx: Out of Bounds")
+          else (c''', Valid (List (changeIndex a d xs)))
+        _ -> (c, Error "Invalid Arguments to AssignIdx")
+
+--CONCATENATE LISTS
+
+listHelper (AddLists e l) c =
+  let (c' , e') = eval e c
+      (c'', l') = eval l c'
+  in  case (e', l') of
+        (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
+        _ -> (c'', Error "Invalid Arguments to AddLists")
+
+-- A helper function for AssignIdx
+changeIndex :: Int -> Value -> [Value] -> [Value]
+changeIndex i d [] = if i == 0 then [d] else []
+changeIndex i d (x : xs) =
+  if i == 0 then d : xs else x : changeIndex (i - 1) d xs
+
+--A helper function for Index.
+grabIndex :: Int -> [Value] -> Context -> (Context, Result)
+grabIndex i [] c = (c, Nil)
+grabIndex i xs c = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
 
 --extractTruth is used to assign some truth value to a Result.  This allows
 --things like If and While structures to operate, of course.
@@ -153,11 +274,13 @@ bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval e ps
   in
     case r of
-      Valid v ->
-        bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
-      Nil -> bindArguments (ps', fs) ns es
+      Valid v -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
+      Nil     -> bindArguments (ps', fs) ns es
       Error err ->
-        Right (ps', Error ("Error in binding scope for function call:" ++ indent err))
+        Right
+          ( ps'
+          , Error ("Error in binding scope for function call:" ++ indent err)
+          )
 
 
 {- call calls a function.  The general idea is that the list of expressions
@@ -177,7 +300,8 @@ call fname e c =
       Just (Fn params body) ->
         let bindings = bindArguments (c, transferFuncDefs c) params e
         in  case bindings of
-              Left  (c', fnScope) -> foldExpressions body fnScope
+              Left (c', fnScope) ->
+                let (_, r) = foldExpressions body fnScope in (c', r)
               Right (c', Error err) -> (c', Error err)
       Nothing ->
         ( c
