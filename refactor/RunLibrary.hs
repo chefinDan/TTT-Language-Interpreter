@@ -22,13 +22,47 @@ run _ _ = putStrLn
   "Could not launch program: second argument to run must be a function."
 
 unwrapReturn :: Result -> IO ()
-unwrapReturn (Error err)  = putStrLn err
+unwrapReturn (Err err)    = printErrors (stringifyErrors err)
 unwrapReturn Nil          = putStrLn "Nil"
 unwrapReturn (Valid rslt) = case rslt of
   (I    i ) -> print i
   (S    s ) -> putStrLn s
   (List l ) -> print l
   (Fn n fn) -> print fn
+
+
+errTypeToString :: ErrType -> String
+errTypeToString (BadOperands    s) = "Invalid operands to " ++ s ++ "."
+errTypeToString (BadConditional s) = "Faulty conditional in " ++ s ++ "."
+errTypeToString (CallUnboundName s) =
+  "Function call failed: Name \""
+    ++ s
+    ++ "\" is not bound to a value in current scope."
+errTypeToString (CallNotAFunc s) =
+  "Function call failed: Name \""
+    ++ s
+    ++ "\" is bound to a non-function value.\n"
+errTypeToString (DerefUnbound s) =
+  "Could not defererence name \""
+    ++ s
+    ++ "\" not bound to any value in current scope."
+errTypeToString ParameterMismatch =
+  "Mismatch between parameter and argument counts.\n"
+errTypeToString ParameterBind     = "Error while binding function parameters."
+errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
+errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
+--Catch-all:
+errTypeToString x =
+  "Error in reporting error: ErrorType \"" ++ show x ++ "\" has no defined string."
+
+stringifyErrors :: Error -> [String]
+stringifyErrors (E e []) = [errTypeToString e]
+stringifyErrors (E e xs) =
+  errTypeToString e : Prelude.map ("\t" ++) (concatMap stringifyErrors xs)
+
+printErrors :: [String] -> IO ()
+printErrors [e     ] = putStrLn e
+printErrors (e : es) = putStrLn (e ++ concatMap ("\n" ++) es)
 
 --LIBRARY
 
@@ -140,12 +174,15 @@ maplist = Fn
   ["fn", "input"]
   [ Bind "i" (Lit (I 0))
   , While
-     (ListExp (Index (Dereference "i") (Dereference "input")))
+    (ListExp (Index (Dereference "i") (Dereference "input")))
     [ Bind
       "input"
-      (ListExp (AssignIdx (Dereference "i")
-                 (Call "fn" [ListExp (Index (Dereference "i") (Dereference "input"))])
-                 (Dereference "input"))
+      (ListExp
+        (AssignIdx
+          (Dereference "i")
+          (Call "fn" [ListExp (Index (Dereference "i") (Dereference "input"))])
+          (Dereference "input")
+        )
       )
     , increment "i"
     ]
@@ -163,8 +200,8 @@ maplist = Fn
 mapdemo :: Value
 mapdemo = Fn
   []
-  [ Bind "ints" (Lit (List [I 10, I 20, I 30]))
-  , Bind "output" (Call "maplist" [Dereference "doubler", Dereference "ints"])
+  [ Bind "ints"    (Lit (List [I 10, I 20, I 30]))
+  , Bind "output"  (Call "maplist" [Dereference "doubler", Dereference "ints"])
   , Bind "strings" (Lit (List [S "foo", S "bar", S "baz"]))
   , ListExp
     (AddLists
@@ -186,31 +223,42 @@ runMapDemo = run mapdemo library
   --  Examples of bad programs that produce error results or unexpected behavior
 ---- 1. Attempts to add a string to an int, result is Error
 
-{-
+errornesting :: Value
+errornesting = Fn
+  []
+  [ ArithExp (Add (Lit (I 1)) 
+     (ArithExp (Add (Lit (I 1))
+       (ArithExp (Add (Lit (I 1))
+         (ArithExp (Add (Lit (I 1)) (Dereference "BOO!"))))))))
+  , Dereference "The program should never get here!"
+  ]
+
 baddemo1 :: Value
 baddemo1 = Fn
   []
-  [
-    Bind "val1" (Lit (I 2)),
-    Bind "val2" (Lit (S "bad")),
-    Add (Dereference "val1") (Var "val2")
+  [ Bind "val1" (Lit (I 2))
+  , Bind "val2" (Lit (S "bad"))
+  , ArithExp (Add (Dereference "val1") (Dereference "val2"))
   ]
+
 
 ---- 2. Attempts to multiply an int literal by an undefined variable,  
 baddemo2 :: Value
 baddemo2 = Fn
-  ["val"]
+  []
   [
-    Multiply (Lit (I 2)) (Dereference "val")
+    ArithExp (Multiply (Lit (I 2)) (Dereference "val"))
   ]
 ---- 3. Attempts to Multiply a string by a negative number 
 baddemo3 :: Value
 baddemo3 = Fn
   []
   [
-    Multiply (Lit (S "oops")) (Lit (I (-2)))
+    ArithExp (Multiply (Lit (S "oops")) (Lit (I (-2))))
   ]
 ---- 4. Division by zero 
+
+{-
 baddemo4 :: Value
 baddemo4 = Fn
   []

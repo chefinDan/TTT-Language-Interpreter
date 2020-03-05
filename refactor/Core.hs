@@ -13,7 +13,6 @@ data Value =
 
 --Just types to make it clear what strings are being used for.
 type Name = String
-type Error = String
 
 data Expression =
     Lit Value
@@ -48,9 +47,11 @@ type Context = Map Name Value
 
 --Result is use to hold the results of expression evaluations, other than
 --errors.
-data Result = Valid Value | Nil | Error String
+data Result = Valid Value | Nil | Err Error
   deriving (Show, Eq)
 
+data Error = E ErrType [Error]
+  deriving (Show, Eq)
 {- Domain is the semantic domain for evaluating expressions. -}
 type Domain = Context -> (Context, Result)
 
@@ -62,7 +63,7 @@ eval (Lit         v) c = (c, Valid v)
 --VARIABLE DEREFERENCING
 eval (Dereference s) c = case Data.Map.Strict.lookup s c of
   Just x  -> (c, Valid x)
-  Nothing -> (c, Error ("Undefined reference to variable " ++ s ++ "."))
+  Nothing -> (c, Err (E (DerefUnbound s) []))
 --FUNCTION CALLING: see helper function call.
 eval (Call s args) c = call s args c
 
@@ -81,8 +82,7 @@ eval (If cnd et ef) c =
   let (c', r) = eval cnd c
   in
     case r of
-      (Error err) ->
-        (c', Error ("Error in evaluating If condition:" ++ indent err))
+      (Err e) -> (c', Err (E (BadConditional "If") [e]))
       _ ->
         if extractTruth r then foldExpressions et c' else foldExpressions ef c'
 
@@ -90,25 +90,19 @@ eval (If cnd et ef) c =
 eval (While cnd es) c =
   let (c', r) = eval cnd c
   in  case r of
-        (Error err) ->
-          (c', Error ("Error in evaluating While condition:" ++ indent err))
-        _ -> if extractTruth r
+        (Err err) -> (c', Err (E (BadConditional "While") [err]))
+        _         -> if extractTruth r
           then let (c'', r') = foldExpressions es c' in eval (While cnd es) c''
           else (c', r)
 
 --VARIABLE BINDING
 eval (Bind s ex) c =
   let val = eval ex c
-  in
-    case val of
-      (c', Valid v) -> (c'', Valid v)
-        where c'' = Data.Map.Strict.insert s v c'
-      (c', Error err) ->
-        ( c'
-        , Error
-          ("Could not assign non-value to variable " ++ s ++ "." ++ indent err)
-        )
-      (c', Nil) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
+  in  case val of
+        (c', Valid v) -> (c'', Valid v)
+          where c'' = Data.Map.Strict.insert s v c'
+        (c', Err err) -> (c', Err (E (BindNotValue s) [err]))
+        (c', Nil    ) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
 
 --LIST OPERATIONS
 eval (ListExp op  ) c = listHelper op c
@@ -117,7 +111,7 @@ eval (ListExp op  ) c = listHelper op c
 eval (LessThan l r) c = undefined --TODO
 
 --Emergency error handling.
-eval e              c = (c, Error ("UNHANDLED EVAL CASE: " ++ show e))
+eval e              c = (c, Err (E (UnhandledEval (show e)) []))
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -132,9 +126,9 @@ foldExpressions :: [Expression] -> Domain
 foldExpressions (e : es) c =
   let (c', r) = eval e c
   in  case (r, es) of
-        (Error err, _ ) -> (c', Error err)
-        (_        , []) -> (c', r)
-        _               -> foldExpressions es c'
+        (Err err, _ ) -> (c', Err err)
+        (_      , []) -> (c', r)
+        _             -> foldExpressions es c'
 foldExpressions [] c = (c, Nil)
 
 {- arithHelper is simply a helper function to handle arithmetic Expression
@@ -145,20 +139,19 @@ arithHelper (Add l r) c =
   let (c' , l') = eval l c
       (c'', r') = eval r c'
   in  case (l', r') of
-        (Error errL, Error errR) ->
-          (c'', Error (errString ++ indent errL ++ indent errR))
-        (Error errL , _          ) -> (c'', Error (errString ++ indent errL))
-        (_          , Error errR ) -> (c'', Error (errString ++ indent errR))
+        (Err errL, Err errR) ->
+          (c'', Err (E (BadOperands "Add") [errL, errR]))
+        (Err errL, _) -> (c'', Err (E (BadOperands "Add") [errL]))
+        (_, Err errR) -> (c'', Err (E (BadOperands "Add") [errR]))
         (Valid (I a), Valid (I b)) -> (c'', Valid (I (a + b)))
         (Valid (S a), Valid (S b)) -> (c'', Valid (S (a ++ b)))
-        _ -> (c'', Error (errString ++ "Operands are of non-addable types."))
-  where errString = "Invalid operands to add: "
+        _ -> (c'', Err (E (BadOperands "Add") []))
 --MULTIPLICATION
 arithHelper (Multiply (Lit (I l)) (Lit (I r))) c = (c, Valid (I (l * r)))
 --Multiplying a string by an integer should, because it's fun, return that 
 --string concatenated that many times.
 arithHelper (Multiply (Lit (S l)) (Lit (I r))) c
-  | r < 0     = (c, Error "Cannot multiply a string by a negative number.")
+  | r < 0     = (c, Err (E MultiplyStringByNegative []))
   | r == 0    = (c, Valid (S ""))
   | r == 1    = (c, Valid (S l))
   | otherwise = (c', Valid (S (l ++ l')))
@@ -168,34 +161,35 @@ arithHelper (Multiply (Lit (S l)) (Lit (I r))) c
 arithHelper (Multiply (Lit (I l)) (Lit (S r))) c =
   arithHelper (Multiply (Lit (S r)) (Lit (I l))) c
 arithHelper (Multiply (Lit _) (Lit _)) c =
-  (c, Error "Invalid operands to multiply.")
+  (c, Err (E (BadOperands "Multiply") []))
 arithHelper (Multiply l r) c =
   let (c' , l') = eval l c
       (c'', r') = eval r c'
   in  case (l', r') of
         (Nil    , y      ) -> (c'', y)
         (x      , Nil    ) -> (c'', x)
-        (Error l, Error r) -> (c'', Error (errStr ++ indent l ++ indent r))
-        (Error l, _      ) -> (c'', Error (errStr ++ indent l))
-        (_      , Error r) -> (c'', Error (errStr ++ indent r))
+        (Err l, Err r) -> (c'', Err (E (BadOperands "Multiply") [l, r]))
+        (Err l  , _      ) -> (c'', Err (E (BadOperands "Multiply") [l]))
+        (_      , Err r  ) -> (c'', Err (E (BadOperands "Multiply") [r]))
         (Valid a, Valid b) -> arithHelper (Multiply (Lit a) (Lit b)) c
-  where errStr = "Invalid operands to multiply:"
 arithHelper (Divide l r) c = undefined --TODO
 
 {-listHelper implements List operations.-}
 listHelper :: ListOp -> Domain
 --INDEX INTO LIST
 listHelper (Index e l) c =
-  let (c' , e') = eval e c
-      (c'', l') = eval l c'
-  in  case (e', l') of
-        (Valid (I a), Valid (List xs)) -> grabIndex a xs c''
-        (Error errL, Error errR) ->
-          (c'', Error (errStr ++ indent errL ++ indent errR))
-        (Error errL, _         ) -> (c'', Error (errStr ++ indent errL))
-        (_         , Error errR) -> (c'', Error (errStr ++ indent errR))
-        _                        -> (c'', Error errStr)
-  where errStr = "Invalid operands to Index."
+  let
+    (c' , e') = eval e c
+    (c'', l') = eval l c'
+  in
+    case (e', l') of
+      (Valid (I a), Valid (List xs)) -> grabIndex a xs c''
+      (Err errL, Err errR) ->
+        (c'', Err (E (BadOperands "Index") [errL, errR]))
+      (Err errL, _) ->
+        (c'', Err (E (BadOperands "Index") [errL]))
+      (_, Err errR) -> (c'', Err (E (BadOperands "Index") [errR]))
+      _             -> (c'', Err (E (BadOperands "Index") []))
 
 listHelper (Append  e l) c = undefined --TODO
 listHelper (Prepend e l) c = undefined --TODO
@@ -207,9 +201,9 @@ listHelper (AssignIdx i e l) c =
       (c''', i') = eval i c''
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
-          then (c''', Error "AssignIdx: Out of Bounds")
+          then (c''', Err (E AssignIdxOOB []))
           else (c''', Valid (List (changeIndex a d xs)))
-        _ -> (c, Error "Invalid Arguments to AssignIdx")
+        _ -> (c, Err (E (BadOperands "Index Assignment") []))
 
 --CONCATENATE LISTS
 
@@ -218,7 +212,7 @@ listHelper (AddLists e l) c =
       (c'', l') = eval l c'
   in  case (e', l') of
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
-        _ -> (c'', Error "Invalid Arguments to AddLists")
+        _ -> (c'', Err (E (BadOperands "List Concatenation") []))
 
 -- A helper function for AssignIdx
 changeIndex :: Int -> Value -> [Value] -> [Value]
@@ -270,21 +264,14 @@ type BindResult = Either (ParentScope, FunctionScope) (ParentScope, Result)
 bindArguments
   :: (ParentScope, FunctionScope) -> [Name] -> [Expression] -> BindResult
 bindArguments (ps, fs) [] [] = Left (ps, fs)
-bindArguments (ps, fs) _ [] =
-  Right (ps, Error "Error: Mismatch between parameter and argument counts.")
-bindArguments (ps, fs) [] _ =
-  Right (ps, Error "Error: Mismatch between parameter and argument counts.")
+bindArguments (ps, fs) _  [] = Right (ps, Err (E ParameterMismatch []))
+bindArguments (ps, fs) [] _  = Right (ps, Err (E ParameterMismatch []))
 bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval e ps
-  in
-    case r of
-      Valid v -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
-      Nil     -> bindArguments (ps', fs) ns es
-      Error err ->
-        Right
-          ( ps'
-          , Error ("Error in binding scope for function call:" ++ indent err)
-          )
+  in  case r of
+        Valid v -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
+        Nil     -> bindArguments (ps', fs) ns es
+        Err err -> Right (ps', Err (E ParameterBind [err]))
 
 
 {- call calls a function.  The general idea is that the list of expressions
@@ -299,27 +286,29 @@ result of the last body expression.-}
 call :: Name -> [Expression] -> Context -> (Context, Result)
 call fname e c =
   let fn = Data.Map.Strict.lookup fname c
-  in
-    case fn of
-      Just (Fn params body) ->
-        let bindings = bindArguments (c, transferFuncDefs c) params e
-        in  case bindings of
-              Left (c', fnScope) ->
-                let (_, r) = foldExpressions body fnScope in (c', r)
-              Right (c', Error err) -> (c', Error err)
-      Nothing ->
-        ( c
-        , Error
-          ("Error :Function call to " ++ fname ++ " failed: no such function.")
-        )
-      _ ->
-        ( c
-        , Error
-          (  "Error: Function call to"
-          ++ fname
-          ++ "failed: name is bound to non-function variable."
-          )
-        )
+  in  case fn of
+        Just (Fn params body) ->
+          let bindings = bindArguments (c, transferFuncDefs c) params e
+          in  case bindings of
+                Left (c', fnScope) ->
+                  let (_, r) = foldExpressions body fnScope in (c', r)
+                Right (c', Err err) -> (c', Err err)
+        Nothing -> (c, Err (E (CallUnboundName fname) []))
+        _       -> (c, Err (E (CallNotAFunc fname) []))
 
 indent :: String -> String
 indent s = "\n\t" ++ s
+
+data ErrType =
+    BadOperands String
+  | BadConditional String
+  | MultiplyStringByNegative
+  | CallUnboundName String
+  | CallNotAFunc String
+  | DerefUnbound String
+  | BindNotValue String
+  | UnhandledEval String
+  | AssignIdxOOB
+  | ParameterMismatch
+  | ParameterBind
+  deriving (Eq, Show)
