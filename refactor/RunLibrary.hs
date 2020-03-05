@@ -58,7 +58,7 @@ errTypeToString x =
 stringifyErrors :: Error -> [String]
 stringifyErrors (E e []) = [errTypeToString e]
 stringifyErrors (E e xs) =
-  errTypeToString e : Prelude.map ("\t" ++) (concatMap stringifyErrors xs)
+  errTypeToString e : Prelude.map ("  " ++) (concatMap stringifyErrors xs)
 
 printErrors :: [String] -> IO ()
 printErrors [e     ] = putStrLn e
@@ -220,8 +220,6 @@ mapdemo = Fn
 runMapDemo :: IO ()
 runMapDemo = run mapdemo library
 
-  --  Examples of bad programs that produce error results or unexpected behavior
----- 1. Attempts to add a string to an int, result is Error
 
 errornesting :: Value
 errornesting = Fn
@@ -232,6 +230,10 @@ errornesting = Fn
          (ArithExp (Add (Lit (I 1)) (Dereference "BOO!"))))))))
   , Dereference "The program should never get here!"
   ]
+
+
+--  Examples of bad programs that produce error results or unexpected behavior
+---- 1. Attempts to add a string to an int, result is Error
 
 baddemo1 :: Value
 baddemo1 = Fn
