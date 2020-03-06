@@ -28,11 +28,13 @@ data Expression =
   | LessThan Expression Expression
   deriving(Show, Eq)
 
+
+--Helper expression, just to keep function definitions reasonable.
 data ArithOp = Add Expression Expression
              | Multiply Expression Expression
              | Divide Expression Expression
              deriving(Show, Eq)
-
+--As above; helper expression.
 data ListOp = Index Expression Expression
             | AssignIdx Expression Expression Expression
             | Append Expression Expression
@@ -45,13 +47,32 @@ data ListOp = Index Expression Expression
 type Context = Map Name Value
 
 
---Result is use to hold the results of expression evaluations, other than
---errors.
+--Result is use to hold the results of expression evaluations.
+--Nil is a special case used in list operations: it represents
+--something which is neither a value nor an error.  In
+--particular, we use it to indicate than an attempt to index
+--into a list is Out of Bounds, which we don't view as an error:
+--it provides a convenient way to iterate over a list without
+--knowing the size.  We can't simply return an empty list or
+--other Value tombstone, because a list could in fact contain
+--an empty list.  Because Lists can legitimately contain any
+--Value, no Value can be used to represent a non-Value.
 data Result = Valid Value | Nil | Err Error
   deriving (Show, Eq)
 
+{- Error is a recursive data type used for storing information
+ - about runtime errors.  ErrType is defined at the bottom, it
+ - has a constructor for each category of error.  By including
+ - a list of Errors in Error, we can nest errors, such that we
+ - can print a hierarchically indented list of all errors that
+ - pertain to the Expression that halted execution.  Because of
+ - course an Expression has Expressions as arguments, even
+ - though we halt execution there can be a deep nest of errors
+ - involved.  See the 'errornesting' demo program for a simple
+ - example. -}
 data Error = E ErrType [Error]
   deriving (Show, Eq)
+
 {- Domain is the semantic domain for evaluating expressions. -}
 type Domain = Context -> (Context, Result)
 
@@ -109,6 +130,9 @@ eval (ListExp op  ) c = listHelper op c
 
 --COMPARATORS
 eval (LessThan l r) c = undefined --TODO
+
+--NAND
+eval (Nand p q) c = undefined --TODO
 
 --Emergency error handling.
 eval e              c = (c, Err (E (UnhandledEval (show e)) []))
@@ -296,8 +320,8 @@ call fname e c =
         Nothing -> (c, Err (E (CallUnboundName fname) []))
         _       -> (c, Err (E (CallNotAFunc fname) []))
 
-indent :: String -> String
-indent s = "\n\t" ++ s
+{- ErrType is used to specify the exact nature of an error.  RunLibrary has
+ - functions for rendering human-readable strings from this. -}
 
 data ErrType =
     BadOperands String

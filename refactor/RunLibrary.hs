@@ -51,6 +51,7 @@ errTypeToString ParameterMismatch =
 errTypeToString ParameterBind     = "Error while binding function parameters."
 errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
 errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
+errTypeToString (BindNotValue s) = "Error in binding \"" ++ s ++ "\": error in expression to be bound."
 --Catch-all:
 errTypeToString x =
   "Error in reporting error: ErrorType \"" ++ show x ++ "\" has no defined string."
@@ -91,12 +92,12 @@ library = buildLibrary
   [ ("doubler", doubler)
   , ("fib"    , fib)
   , ("maplist", maplist)
---  , ("not"    , not)
---  , ("and"    , and)
---  , ("or"     , or)
---  , ("xor"    , xor)
---  , ("nor"    , nor)
---  , ("xnor"   , xnor)
+  , ("not"    , not)
+  , ("and"    , and)
+  , ("or"     , or)
+  , ("xor"    , xor)
+  , ("nor"    , nor)
+  , ("xnor"   , xnor)
   ]
 
 
@@ -220,7 +221,12 @@ mapdemo = Fn
 runMapDemo :: IO ()
 runMapDemo = run mapdemo library
 
-
+{- errornesting demonstrates our error handling:  It's a two line
+ - function with an error on the first line, but that first line 
+ - is a complicated nested call.  The output is a nested series
+ - of errors about invalid operands to add, terminating in an
+ - error complaining that "Boo" is undefined.  The second line
+ - of the function is never executed. -}
 errornesting :: Value
 errornesting = Fn
   []
@@ -268,6 +274,8 @@ baddemo4 = Fn
     Bind "zero" (Lit (I 0)),
     Divide (Lit (I 2)) (Dereference "zero")
   ]
+-}
+
 ---- 5. Accessing out of bounds element in list via while loop
 baddemo5 :: Value
 baddemo5 = Fn
@@ -277,11 +285,11 @@ baddemo5 = Fn
     Bind "badLen" (Lit (I 4)),
     Bind "list" (Lit (List [I 2, I 3, I 4])),
     Bind "val" (Lit (I 9)),
-    While (Call "not" [Equ (Dereference "idx") (Var "badLen")])
+    While (Call "not" [Equ (Dereference "idx") (Dereference "badLen")])
     [
-      Bind "list" (AssignIdx (Dereference "idx") 
+      Bind "list" (ListExp (AssignIdx (Dereference "idx") 
                 (Dereference "val") 
-                (Dereference "list")),
+                (Dereference "list"))),
       increment "idx"
     ]
   ]
@@ -308,6 +316,8 @@ baddemo7 = Fn
 
 
 --Helper function to run the baddemo progs 
+
+{-
 runBadDemo :: Int -> Result
 runBadDemo n = run library
   (if n == 1 then baddemo1
@@ -320,6 +330,4 @@ runBadDemo n = run library
   else noProg n)                  
 noProg :: Int -> Value
 noProg n = Fn [] [Lit (S ("runBadDemo Error: Cannot find program baddemo" ++ (show n)))]
-
-
 -}
