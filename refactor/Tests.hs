@@ -30,5 +30,5 @@ import RunLibrary
 --   >>> eval (ArithExp (Divide (Lit (I 10)) (Lit (S "foo")))) emptyContext
 --   (fromList [],Err (E (BadOperands "divide") []))
 --
---   >>> eval (ArithExp (Divide (Lit (S "foo")) (Lit (S "bar"))) emptyContext
+--   >>> eval (ArithExp (Divide (Lit (S "foo")) (Lit (S "bar")))) emptyContext
 --   (fromList [],Err (E (BadOperands "divide") []))
