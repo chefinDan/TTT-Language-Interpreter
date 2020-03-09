@@ -32,3 +32,33 @@ import RunLibrary
 --
 --   >>> eval (ArithExp (Divide (Lit (S "foo")) (Lit (S "bar")))) emptyContext
 --   (fromList [],Err (E (BadOperands "divide") []))
+--
+--   >>> eval (LessThan (Lit (I 10)) (Lit (I 10))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (LessThan (Lit (I 9)) (Lit (I 10))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (LessThan (Lit (I 11)) (Lit (I 10))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (LessThan (Lit (S "foo")) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (LessThan (Lit (S "bar")) (Lit (S "foo"))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (LessThan (Lit (S "bar")) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (LessThan (Lit (S "bar")) (Lit (I 10))) emptyContext
+--   (fromList [],Err (E (BadOperands "comparator") []))
+--
+--   >>> eval (LessThan (Lit (I 9)) (Lit (S "bar"))) emptyContext
+--   (fromList [],Err (E (BadOperands "comparator") []))
+--
+--   >>> eval (LessThan (Lit (S "foo")) (Dereference "bar")) emptyContext
+--   (fromList [],Err (E (BadOperands "comparator") [E (DerefUnbound "bar") []]))
+--
+--   >>> eval (LessThan (ArithExp (Add (Lit (I 1)) (Lit (S "foo")))) (Dereference "bar")) emptyContext
+--   (fromList [],Err (E (BadOperands "comparator") [E (DerefUnbound "bar") []]))
