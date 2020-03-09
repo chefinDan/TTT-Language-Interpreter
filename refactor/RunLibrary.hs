@@ -52,18 +52,12 @@ errTypeToString ParameterBind     = "Error while binding function parameters."
 errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
 errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
 errTypeToString (BindNotValue s) = "Error in binding \"" ++ s ++ "\": error in expression to be bound."
-<<<<<<< HEAD
 errTypeToString (DivideByZero) = "Cannot divide by zero."
-=======
->>>>>>> 498c7c587844f382fdf62f80b4b622cdb23c2901
+
 --Catch-all:
 errTypeToString x =
   "Error in reporting error: ErrorType \"" ++ show x ++ "\" has no defined string."
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 498c7c587844f382fdf62f80b4b622cdb23c2901
 stringifyErrors :: Error -> [String]
 stringifyErrors (E e []) = [errTypeToString e]
 stringifyErrors (E e xs) =
