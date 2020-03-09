@@ -156,9 +156,6 @@ eval (LessThan l r) c =
 --NAND
 eval (Nand p q) c = undefined --TODO
 
---Emergency error handling.
-eval e          c = (c, Err (E (UnhandledEval (show e)) []))
-
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
 but intermediate results are basically rvalues and are discarded between lines;

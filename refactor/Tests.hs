@@ -61,4 +61,4 @@ import RunLibrary
 --   (fromList [],Err (E (BadOperands "comparator") [E (DerefUnbound "bar") []]))
 --
 --   >>> eval (LessThan (ArithExp (Add (Lit (I 1)) (Lit (S "foo")))) (Dereference "bar")) emptyContext
---   (fromList [],Err (E (BadOperands "comparator") [E (DerefUnbound "bar") []]))
+--   (fromList [],Err (E (BadOperands "comparator") [E (BadOperands "Add") [],E (DerefUnbound "bar") []]))
