@@ -222,7 +222,7 @@ arithHelper (Multiply l r) c =
         
 -- Division
 arithHelper (Divide _ (Lit (I 0))) c = (c, Err (E (DivideByZero) [] ))
-arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (DivideByZero) [] ))
+arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (BadOperands "divide") [] ))
 arithHelper (Divide (Lit (S s)) (Lit (I n))) c = (c, Valid (substring n (S s)))
 arithHelper (Divide (Lit (I n)) (Lit (I d))) c = (c, Valid (I (n `div` d)))
 arithHelper (Divide (Lit _) (Lit _)) c = (c, Err (E (BadOperands "divide") [] ))
