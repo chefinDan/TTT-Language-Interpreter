@@ -146,6 +146,7 @@ eval (LessThan l r) c =
         (Err l  , Err r    ) -> (c, Err (E (BadOperands "comparator") [l, r] ))
         (Err l  , _      ) -> (c, Err (E (BadOperands "comparator") [l] ))
         (_      , Err r  ) -> (c, Err (E (BadOperands "comparator") [r] ))
+
         (Valid (I n1), Valid (I n2))
           | n1 < n2 -> (c, Valid (I 1))
           | otherwise -> (c, (Valid (I 0)))
@@ -225,6 +226,7 @@ arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (DivideByZero) [] ))
 arithHelper (Divide (Lit (S s)) (Lit (I n))) c = (c, Valid (substring n (S s)))
 arithHelper (Divide (Lit (I n)) (Lit (I d))) c = (c, Valid (I (n `div` d)))
 arithHelper (Divide (Lit _) (Lit _)) c = (c, Err (E (BadOperands "divide") [] ))
+
 arithHelper (Divide l r) c = 
   let (c' , l') = eval l c
       (c'', r') = eval r c'
@@ -380,4 +382,5 @@ data ErrType =
   | ParameterMismatch
   | ParameterBind
   | DivideByZero
+
   deriving (Eq, Show)

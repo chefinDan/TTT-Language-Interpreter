@@ -17,5 +17,8 @@ import RunLibrary
 --
 --   >>> eval (ArithExp (Add (Lit (I 5)) (Lit (S "foo")))) emptyContext
 --   (fromList [],Error "Invalid operands to add: Operands are of non-addable types.") 
+<<<<<<< HEAD
 --
 --   >>> eval (Arith) 
+=======
+>>>>>>> 498c7c587844f382fdf62f80b4b622cdb23c2901

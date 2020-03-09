@@ -1,8 +1,17 @@
-import           Data.HashMap.Strict
-import           Debug.Trace
-import           Prelude                 hiding ( subtract )
-import           Data.List
+module Core where
 
+import           Data.Map.Strict
+import           Debug.Trace
+import           Prelude                 hiding ( subtract
+                                                , not
+                                                , and
+                                                , or
+                                                )
+--import           Data.List
+
+
+{- Values are the basic data types available as literals.  Note that boolean
+ - values are expressible via syntactic sugar. -}
 data Value =
     I Int
   | S String
@@ -32,9 +41,18 @@ instance Ord Value where
   (S x) <= (S y) = x <= y
   _     <= _     = False
 
+
+{- In our language, all Expressions evaluate down to a result: Results can
+ - be any of a Value, Nil, or an Error.  Nil and Error are distinct, with the
+ - former being used for, among other things, an out of bounds index on an
+ - array. -}
 data Result = Valid Value | Error | Nil
   deriving (Show, Eq)
 
+{- Expressions are the basic unit of execution.  Each expression can take
+ - other expressions as arguments, and arguments will be recursively evaluated
+ - left to right to produce Results on which the top level expression will
+ - operate. -}
 data Expression =
     Val Value
   | Var Name
@@ -51,24 +69,32 @@ data Expression =
   | If Expression [Expression] [Expression]
   | While Expression [Expression]
   | Assign Name Expression
-  | Or Expression Expression
-  | And Expression Expression
-  | Not Expression
+  | Nand Expression Expression
   | LessThan Expression Expression
   | LessThanEq Expression Expression
   | GreaterThan Expression Expression
   | GreaterThanEq Expression Expression
   deriving(Show, Eq)
 
-type Context = HashMap Name Value
+{- Context is used to store the state.  State in our language consists of
+ - all variable bindings visible in the current scope. -}
+type Context = Map Name Value
 
+{- Domain is the semantic domain for evaluating Expressions.  Each Expression
+ - takes a Context, and returns a tuple of a Context and a Result.  The context
+ - returned by an Expression is then passed to the next Expression to be
+ - evaluated, so that state is preserved and updated as the program executes. -}
 type Domain = Context -> Expression -> (Context, Result)
 
+
+{- eval is the basic Haskell function for evaluating Expressions.  We intend
+ - to refactor some of these cases out into sub-types later on, to shorten
+ - the sheer number of cases. -}
 eval :: Domain
 --Just a literal or a variable: evaluates to the data contained, or to an error
 --if an attempt is made to evaluate an undefined variable.
 eval c (Val v) = (c, Valid v)
-eval c (Var s) = case Data.HashMap.Strict.lookup s c of
+eval c (Var s) = case Data.Map.Strict.lookup s c of
   Just x  -> (c, Valid x)
   Nothing -> (c, printError ("Undefined reference to variable " ++ s ++ "."))
 --Assignment of variable.  Assigning an Error produces another Error, assigning
@@ -78,35 +104,28 @@ eval c (Assign s ex) =
   let val = eval c ex
   in  case val of
         (c', Valid v) -> (c'', Valid v)
-          where c'' = Data.HashMap.Strict.insert s v c'
+          where c'' = Data.Map.Strict.insert s v c'
         (c', Error) ->
           ( c'
           , printError ("Could not assign non-value to variable " ++ s ++ ".")
           )
-        (c', Nil) -> (c'', Nil) where c'' = Data.HashMap.Strict.delete s c'
+        (c', Nil) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
 --Calling a function.  Meat below in function def.
 eval c (Call n e) = call c n e
 --Equality
-eval c (Equ l r) | l' == r'  = (c'', true)
-                 | otherwise = (c'', false)
+eval c (Equ l r) | l' == r'  = (c'', Valid (I 1))
+                 | otherwise = (c'', Valid (I 0))
  where
   (c' , l') = eval c l
   (c'', r') = eval c' r
---Logical Operators
-eval c (Or e1 e2) =
+
+--Logical Operator
+eval c (Nand e1 e2) =
   let (c' , l) = eval c e1
       (c'', r) = eval c' e2
   in  case (extractTruth l, extractTruth r) of
-        (False, False) -> (c'', false)
-        _              -> (c'', true)
-eval c (And e1 e2) =
-  let (c' , l) = eval c e1
-      (c'', r) = eval c' e2
-  in  case (extractTruth l, extractTruth r) of
-        (True, True) -> (c'', true)
-        _            -> (c'', false)
-eval c (Not e) =
-  let (c', r) = eval c e in if extractTruth r then (c', false) else (c', true)
+        (True, True) -> (c'', Valid (I 0))
+        _            -> (c'', Valid (I 1))
 --If/Else
 eval c (If cnd et ef) =
   let (c', r) = eval c cnd
@@ -172,6 +191,7 @@ eval c (Divide l r) =
         (Error   , _       ) -> (c, printError "Invalid operands to divide")
         (_       , Error   ) -> (c, printError "Invalid operands to divide")
         (Valid n1, Valid n2) -> eval c'' (Divide (Val n1) (Val n2))
+-- List Operations
 eval c (Index e l) =
   let (c' , e') = eval c e
       (c'', l') = eval c' l
@@ -195,8 +215,8 @@ eval c (AssignIdx i e l) =
       (c'' , l') = eval c' l
       (c''', i') = eval c'' i
   in  case (i', e', l') of
-        (Valid (I a), Valid d, Valid (List xs)) -> if a > length xs || a < 0
-          then (c''', printError "Out of Bounds")
+        (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
+          then (c''', printError "AssignIdx: Out of Bounds")
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, printError "Invalid Arguments to AssignIdx")
 eval c (AddLists e l) =
@@ -206,6 +226,7 @@ eval c (AddLists e l) =
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
 
+<<<<<<< HEAD:untitled-group-project.hs
 eval c (LessThan (Val (I n1)) (Val (I n2)))
   | I n1 < I n2 = (c, true)
   | otherwise = (c, false)
@@ -222,23 +243,29 @@ eval c (LessThan(Val (S s)) (Val (I n))) = (c, printError "Error: Mismatched typ
 --  in  case (l', r') of
 --        (l' < r') -> (c'', true)
 
+=======
+-- A helper function for AssignIdx
+>>>>>>> 498c7c587844f382fdf62f80b4b622cdb23c2901:milestone/Core.hs
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
   if i == 0 then d : xs else x : changeIndex (i - 1) d xs
 
+--A helper function for Index.
 grabIndex :: Context -> Int -> [Value] -> (Context, Result)
 grabIndex c i [] = (c, Nil)
 grabIndex c i xs = if length xs > i then (c, Valid (xs !! i)) else (c, Nil)
 
 -- substring: for String division
 substring :: Int -> Value -> Value
-substring x (S text) = S (take n text) where n = length text `div` x
+substring x (S text) = S (Prelude.take n text) where n = length text `div` x
 --The trace thing for error reporting comes from: https://stackoverflow.com/questions/42700743/how-can-i-print-the-parameters-of-a-function-before-evaluation-in-haskell
 printError :: String -> Result
 printError s | trace s False = undefined
 printError s                 = Error
 
+--exctractTruth is used to assign some truth value to a Result.  This allows
+--things like If and While structures to operate, of course.
 extractTruth :: Result -> Bool
 extractTruth (Valid (I 0 )) = False
 extractTruth (Valid (S "")) = False
@@ -273,8 +300,11 @@ valueIsFunc :: Value -> Bool
 valueIsFunc (Fn _ _) = True
 valueIsFunc _        = False
 
+--transferFuncDefs is used in scope creation; it takes a Context and returns
+--a new Context from which all non-function variable bindings have been
+--excised.
 transferFuncDefs :: Context -> Context
-transferFuncDefs = Data.HashMap.Strict.filter valueIsFunc
+transferFuncDefs = Data.Map.Strict.filter valueIsFunc
 
 --For bind arguments, we produce a tuple of two Contexts; the first is to preserve
 --any modifications to the original context produced as side effects of evaluating
@@ -287,7 +317,7 @@ bindArguments (ps, fs) _  [] = (ps, fs)
 bindArguments (ps, fs) (n : ns) (e : es) =
   let (ps', r) = eval ps e
   in  case r of
-        Valid v -> bindArguments (ps', Data.HashMap.Strict.insert n v fs) ns es
+        Valid v -> bindArguments (ps', Data.Map.Strict.insert n v fs) ns es
         _       -> bindArguments (ps', fs) ns es
 
 {- call calls a function.  The general idea is that the list of expressions provided
@@ -301,12 +331,12 @@ then evaluates down to the (possibly modifed) parent scope and the result of
   the last body expression.-}
 call :: Context -> Name -> [Expression] -> (Context, Result)
 call c fname e =
-  let fn = Data.HashMap.Strict.lookup fname c
+  let fn = Data.Map.Strict.lookup fname c
   in  case fn of
         Just (Fn params body) ->
           let (c'    , scope) = bindArguments (c, transferFuncDefs c) params e
               (scope', r    ) = foldExpressions scope body
-          in  (Data.HashMap.Strict.union (transferFuncDefs scope') c', r)
+          in  (Data.Map.Strict.union (transferFuncDefs scope') c', r)
         Nothing ->
           ( c
           , printError
@@ -320,115 +350,3 @@ call c fname e =
             ++ "failed: name is bound to non-function variable."
             )
           )
-
--- SUGAR
-
-true :: Result
-true = Valid (I 1)
-
-false :: Result
-false = Nil
-
-increment :: Name -> Expression
-increment n = Assign n (Add (Var n) (Val (I 1)))
-
-subtract :: Expression -> Expression -> Expression
-subtract l r = Add l (Multiply r (Val (I (-1))))
-
-define :: Name -> [Name] -> [Expression] -> Expression
-define n ps es = Assign n (Val (Fn ps es))
-
-
---LIBRARY and PROGRAM LAUNCHING
-
-buildLibrary :: Context -> [(Name, Value)] -> Context
-buildLibrary c [] = c
-buildLibrary c ((n, fn) : ts) =
-  buildLibrary (Data.HashMap.Strict.insert n fn c) ts
-
-run :: Context -> Value -> Result
-run c (Fn n e) =
-  let c'     = Data.HashMap.Strict.insert "main" (Fn n e) c
-      (_, r) = call c' "main" []
-  in  r
-run _ _ = printError
-  "Could not launch program: second argument to run must be a function."
-
-emptyContext :: Context
-emptyContext = Data.HashMap.Strict.empty
-
-library :: Context
-library = buildLibrary
-  emptyContext
-  [("doubler", doubler), ("fib", fib), ("list", listtest), ("maplist", maplist)]
-
-
-listtest :: Value
-listtest = Fn ["list"] [Val (List [I 5, I 2])]
-
-doubler :: Value
-doubler = Fn ["x"] [Add (Var "x") (Var "x")]
-
---Simple naive Fibonacci implementation.
-fib :: Value
-fib = Fn
-  ["n"]
-  [ If
-      (Equ (Var "n") (Val (I 0)))
-      [--then
-       Val (I 0)]
-      [--else
-        If
-          (Equ (Var "n") (Val (I 1)))
-          [--then
-           Val (I 1)]
-          [--else
-            Add (Call "fib" [subtract (Var "n") (Val (I 1))])
-                (Call "fib" [subtract (Var "n") (Val (I 2))])
-          ]
-      ]
-  ]
-
-
---Maplist takes as arguments a function and a list, and maps that function over
---each item in the list, returning the new, modified list.
-maplist :: Value
-maplist = Fn
-  ["fn", "input"]
-  [ Assign "i" (Val (I 0))
-  , While
-    (Index (Var "i") (Var "input"))
-    [ Assign
-      "input"
-      (AssignIdx (Var "i")
-                 (Call "fn" [Index (Var "i") (Var "input")])
-                 (Var "input")
-      )
-    , increment "i"
-    ]
-  , Var "input"
-  ]
-
---mapdemo is a demo program.  It defines a list of integers, then
---calls maplist, passing the doubler function in as an argument.  It then
---defines a list of strings, and calls maplist on that as well, this time
---passing in a function literal that multiplies its argument by three.
---Finally, it concatenates the two lists and returns them.
-mapdemo :: Value
-mapdemo = Fn
-  []
-  [ Assign "ints"    (Val (List [I 10, I 20, I 30]))
-  , Assign "output"  (Call "maplist" [Var "doubler", Var "ints"])
-  , Assign "strings" (Val (List [S "foo", S "bar", S "baz"]))
-  , AddLists
-    (Var "output")
-    (Call "maplist"
-          [Val (Fn ["str"] [Multiply (Var "str") (Val (I 3))]), Var "strings"]
-    )
-  ]
-
-runFibonacci :: Int -> Result
-runFibonacci n = run library (Fn [] [Call "fib" [Val (I n)]])
-
-runMapDemo :: Result
-runMapDemo = run library mapdemo
