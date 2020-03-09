@@ -52,6 +52,8 @@ errTypeToString ParameterBind     = "Error while binding function parameters."
 errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
 errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
 errTypeToString (BindNotValue s) = "Error in binding \"" ++ s ++ "\": error in expression to be bound."
+errTypeToString (DivideByZero) = "Cannot divide by zero."
+
 --Catch-all:
 errTypeToString x =
   "Error in reporting error: ErrorType \"" ++ show x ++ "\" has no defined string."
@@ -98,6 +100,9 @@ library = buildLibrary
   , ("xor"    , xor)
   , ("nor"    , nor)
   , ("xnor"   , xnor)
+  , ("greaterThanEQ", greaterThanEQ)
+  , ("lessThanEQ", lessThanEQ)
+  , ("greaterThan", greaterThan)
   ]
 
 
@@ -135,6 +140,25 @@ fib = Fn
 
 runFibonacci :: Int -> IO ()
 runFibonacci n = run (Fn [] [Call "fib" [Lit (I n)]]) library
+
+-- Equality Operators
+
+greaterThanEQ :: Value
+greaterThanEQ = Fn 
+                ["p", "q"] 
+                [Call "not" [LessThan (Dereference "p") (Dereference "q")]]
+
+lessThanEQ :: Value
+lessThanEQ = Fn 
+             ["p", "q"] 
+             [Call "or" [Equ (Dereference "p") (Dereference "q"), LessThan (Dereference "p") (Dereference "q")]]
+
+greaterThan :: Value
+greaterThan = Fn 
+              ["p", "q"] 
+              [Call "not" [Call "lessThanEQ" [Dereference "p", Dereference "q"]]]
+
+
 
 --Logical operation functions, all deriving from the Core Nand.
 not :: Value

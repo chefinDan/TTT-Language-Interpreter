@@ -1,6 +1,7 @@
 module Core where
 
 import           Data.Map.Strict
+import           Prelude
 
 {- Values are the basic data types available as literals.  Note that boolean
  - values are expressible via syntactic sugar. -}
@@ -126,16 +127,34 @@ eval (Bind s ex) c =
         (c', Nil    ) -> (c'', Nil) where c'' = Data.Map.Strict.delete s c'
 
 --LIST OPERATIONS
-eval (ListExp op  ) c = listHelper op c
+eval (ListExp op) c = listHelper op c
 
 --COMPARATORS
-eval (LessThan l r) c = undefined --TODO
+eval (LessThan (Lit (I n1)) (Lit (I n2))) c | n1 < n2   = (c, Valid (I 1))
+                                            | otherwise = (c, Valid (I 0))
+eval (LessThan (Lit (S s1)) (Lit (S s2))) c | s1 < s2   = (c, Valid (I 1))
+                                            | otherwise = (c, Valid (I 0))
+eval (LessThan (Lit (I n)) (Lit (S s))) c =
+  (c, Err (E (BadOperands "comparator") []))
+eval (LessThan (Lit (S s)) (Lit (I n))) c =
+  (c, Err (E (BadOperands "comparator") []))
+eval (LessThan l r) c =
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
+        (Nil  , _    ) -> (c, Err (E (BadOperands "comparator") []))
+        (_    , Nil  ) -> (c, Err (E (BadOperands "comparator") []))
+        (Err l, Err r) -> (c, Err (E (BadOperands "comparator") [l, r]))
+        (Err l, _    ) -> (c, Err (E (BadOperands "comparator") [l]))
+        (_    , Err r) -> (c, Err (E (BadOperands "comparator") [r]))
+
+        (Valid (I n1), Valid (I n2)) | n1 < n2   -> (c, Valid (I 1))
+                                     | otherwise -> (c, Valid (I 0))
+        (Valid (S s1), Valid (S s2)) | s1 < s2   -> (c, Valid (I 1))
+                                     | otherwise -> (c, Valid (I 0))
 
 --NAND
 eval (Nand p q) c = undefined --TODO
-
---Emergency error handling.
-eval e              c = (c, Err (E (UnhandledEval (show e)) []))
 
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
@@ -163,16 +182,15 @@ arithHelper (Add l r) c =
   let (c' , l') = eval l c
       (c'', r') = eval r c'
   in  case (l', r') of
-        (Err errL, Err errR) ->
-          (c'', Err (E (BadOperands "Add") [errL, errR]))
-        (Err errL, _) -> (c'', Err (E (BadOperands "Add") [errL]))
-        (_, Err errR) -> (c'', Err (E (BadOperands "Add") [errR]))
+        (Err errL, Err errR) -> (c'', Err (E (BadOperands "Add") [errL, errR]))
+        (Err errL   , _          ) -> (c'', Err (E (BadOperands "Add") [errL]))
+        (_          , Err errR   ) -> (c'', Err (E (BadOperands "Add") [errR]))
         (Valid (I a), Valid (I b)) -> (c'', Valid (I (a + b)))
         (Valid (S a), Valid (S b)) -> (c'', Valid (S (a ++ b)))
-        _ -> (c'', Err (E (BadOperands "Add") []))
+        _                          -> (c'', Err (E (BadOperands "Add") []))
 --MULTIPLICATION
 arithHelper (Multiply (Lit (I l)) (Lit (I r))) c = (c, Valid (I (l * r)))
---Multiplying a string by an integer should, because it's fun, return that 
+--Multiplying a string by an integer should, because it's fun, return that
 --string concatenated that many times.
 arithHelper (Multiply (Lit (S l)) (Lit (I r))) c
   | r < 0     = (c, Err (E MultiplyStringByNegative []))
@@ -192,28 +210,48 @@ arithHelper (Multiply l r) c =
   in  case (l', r') of
         (Nil    , y      ) -> (c'', y)
         (x      , Nil    ) -> (c'', x)
-        (Err l, Err r) -> (c'', Err (E (BadOperands "Multiply") [l, r]))
+        (Err l  , Err r  ) -> (c'', Err (E (BadOperands "Multiply") [l, r]))
         (Err l  , _      ) -> (c'', Err (E (BadOperands "Multiply") [l]))
         (_      , Err r  ) -> (c'', Err (E (BadOperands "Multiply") [r]))
         (Valid a, Valid b) -> arithHelper (Multiply (Lit a) (Lit b)) c
-arithHelper (Divide l r) c = undefined --TODO
+
+-- Division
+arithHelper (Divide _ (Lit (I 0))) c = (c, Err (E (DivideByZero) []))
+arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (BadOperands "divide") []))
+arithHelper (Divide (Lit (S s)) (Lit (I n))) c = (c, Valid (substring n (S s)))
+arithHelper (Divide (Lit (I n)) (Lit (I d))) c = (c, Valid (I (n `div` d)))
+arithHelper (Divide (Lit _) (Lit _)) c = (c, Err (E (BadOperands "divide") []))
+
+arithHelper (Divide l r) c =
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
+        (Nil    , _      ) -> (c, Err (E (BadOperands "divide") []))
+        (_      , Nil    ) -> (c, Err (E (BadOperands "divide") []))
+        (Err l  , Err r  ) -> (c, Err (E (BadOperands "divide") [l, r]))
+        (Err l  , _      ) -> (c, Err (E (BadOperands "divide") [l]))
+        (_      , Err r  ) -> (c, Err (E (BadOperands "divide") [r]))
+        (Valid n, Valid d) -> arithHelper (Divide (Lit n) (Lit d)) c
+
+
+-- substring for string division
+substring :: Int -> Value -> Value
+substring x (S text) = S (Prelude.take n text) where n = length text `div` x
+
 
 {-listHelper implements List operations.-}
 listHelper :: ListOp -> Domain
 --INDEX INTO LIST
 listHelper (Index e l) c =
-  let
-    (c' , e') = eval e c
-    (c'', l') = eval l c'
-  in
-    case (e', l') of
-      (Valid (I a), Valid (List xs)) -> grabIndex a xs c''
-      (Err errL, Err errR) ->
-        (c'', Err (E (BadOperands "Index") [errL, errR]))
-      (Err errL, _) ->
-        (c'', Err (E (BadOperands "Index") [errL]))
-      (_, Err errR) -> (c'', Err (E (BadOperands "Index") [errR]))
-      _             -> (c'', Err (E (BadOperands "Index") []))
+  let (c' , e') = eval e c
+      (c'', l') = eval l c'
+  in  case (e', l') of
+        (Valid (I a), Valid (List xs)) -> grabIndex a xs c''
+        (Err errL, Err errR) ->
+          (c'', Err (E (BadOperands "Index") [errL, errR]))
+        (Err errL, _       ) -> (c'', Err (E (BadOperands "Index") [errL]))
+        (_       , Err errR) -> (c'', Err (E (BadOperands "Index") [errR]))
+        _                    -> (c'', Err (E (BadOperands "Index") []))
 
 listHelper (Append  e l) c = undefined --TODO
 listHelper (Prepend e l) c = undefined --TODO
@@ -335,4 +373,6 @@ data ErrType =
   | AssignIdxOOB
   | ParameterMismatch
   | ParameterBind
+  | DivideByZero
+
   deriving (Eq, Show)

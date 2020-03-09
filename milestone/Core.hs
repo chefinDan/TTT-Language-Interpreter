@@ -71,6 +71,9 @@ data Expression =
   | Assign Name Expression
   | Nand Expression Expression
   | LessThan Expression Expression
+  | LessThanEq Expression Expression
+  | GreaterThan Expression Expression
+  | GreaterThanEq Expression Expression
   deriving(Show, Eq)
 
 {- Context is used to store the state.  State in our language consists of
@@ -223,7 +226,26 @@ eval c (AddLists e l) =
         (Valid (List a), Valid (List xs)) -> (c'', Valid (List (a ++ xs)))
         _ -> (c'', printError "Invalid Arguments to AddLists")
 
+<<<<<<< HEAD:untitled-group-project.hs
+eval c (LessThan (Val (I n1)) (Val (I n2)))
+  | I n1 < I n2 = (c, true)
+  | otherwise = (c, false)
+eval c (LessThan(Val (S s1)) (Val (S s2)))
+  | S s1 < S s2 = (c, true)
+  | otherwise = (c, false)
+eval c (LessThan(Val (I n)) (Val (S s))) = (c, printError "Error: Mismatched type when using '<' operator")
+eval c (LessThan(Val (S s)) (Val (I n))) = (c, printError "Error: Mismatched type when using '<' operator")
+
+-- eval c (LessThan l r) 
+--   | l < r = (c'', True)
+--     where (c' , l) = eval c n1
+--           (c'', r) = eval c' n2
+--  in  case (l', r') of
+--        (l' < r') -> (c'', true)
+
+=======
 -- A helper function for AssignIdx
+>>>>>>> 498c7c587844f382fdf62f80b4b622cdb23c2901:milestone/Core.hs
 changeIndex :: Int -> Value -> [Value] -> [Value]
 changeIndex i d [] = if i == 0 then [d] else []
 changeIndex i d (x : xs) =
@@ -250,6 +272,7 @@ extractTruth (Valid (S "")) = False
 extractTruth Nil            = False
 extractTruth Error          = False
 extractTruth _              = True
+
 
 
 {- foldExpressions is the basic function for crunching a series of expressions
