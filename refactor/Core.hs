@@ -1,6 +1,7 @@
 module Core where
 
 import           Data.Map.Strict
+import           Prelude
 
 {- Values are the basic data types available as literals.  Note that boolean
  - values are expressible via syntactic sugar. -}
@@ -196,7 +197,28 @@ arithHelper (Multiply l r) c =
         (Err l  , _      ) -> (c'', Err (E (BadOperands "Multiply") [l]))
         (_      , Err r  ) -> (c'', Err (E (BadOperands "Multiply") [r]))
         (Valid a, Valid b) -> arithHelper (Multiply (Lit a) (Lit b)) c
-arithHelper (Divide l r) c = undefined --TODO
+        
+-- Division
+arithHelper (Divide _ (Lit (I 0))) c = (c, Err (E (BadOperands "Divide by zero") [] ))
+arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (BadOperands "Divide by string") [] ))
+arithHelper (Divide (Lit (S s)) (Lit (I n))) c = (c, Valid (substring n (S s)))
+arithHelper (Divide (Lit (I n)) (Lit (I d))) c = (c, Valid (I (n `div` d)))
+arithHelper (Divide (Lit _) (Lit _)) c = (c, Err (E (BadOperands "Invalid operands to divide") [] ))
+arithHelper (Divide l r) c = 
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
+      (Nil     , _       ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
+      (_       , Nil     ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
+      (Err l  , _      ) -> (c, Err (E (BadOperands "Invalid operands to divide") [] ))
+      (_      , Err r  ) -> (c, Err (E (BadOperands "Invalid operands to divide") [] ))
+      (Valid n, Valid d) -> arithHelper (Divide (Lit n) (Lit d)) c
+
+
+-- substring for string division
+substring :: Int -> Value -> Value 
+substring x (S text) = S (Prelude.take n text) where n = length text `div` x
+
 
 {-listHelper implements List operations.-}
 listHelper :: ListOp -> Domain
