@@ -130,7 +130,28 @@ eval (Bind s ex) c =
 eval (ListExp op  ) c = listHelper op c
 
 --COMPARATORS
-eval (LessThan l r) c = undefined --TODO
+eval (LessThan (Lit (I n1)) (Lit (I n2))) c
+  | n1 < n2 = (c, Valid (I 1))
+  | otherwise = (c, Valid (I 0))
+eval (LessThan (Lit (S s1)) (Lit (S s2))) c
+  | s1 < s2 = (c, (Valid (I 1)))
+  | otherwise = (c, (Valid (I 0)))
+eval (LessThan (Lit (I n)) (Lit (S s))) c = (c, Err (E (BadOperands "Error: Mismatched type when using '<' operator") []) )
+eval (LessThan (Lit (S s)) (Lit (I n))) c = (c, Err (E (BadOperands "Error: Mismatched type when using '<' operator") []) )
+eval (LessThan l r) c =
+  let (c' , l') = eval l c
+      (c'', r') = eval r c' in case (l', r') of 
+        (Nil     , _       ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
+        (_       , Nil     ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
+        (Err l  , Err r    ) -> (c, Err (E (BadOperands "Invalid operands to do comparison") [l, r] ))
+        (Err l  , _      ) -> (c, Err (E (BadOperands "Invalid operands to do comparison") [l] ))
+        (_      , Err r  ) -> (c, Err (E (BadOperands "Invalid operands to do comparison") [r] ))
+        (Valid (I n1), Valid (I n2))
+          | n1 < n2 -> (c, Valid (I 1))
+          | otherwise -> (c, (Valid (I 0)))
+        (Valid (S s1), Valid (S s2)) 
+          | s1 < s2 -> (c, (Valid (I 1)))
+          | otherwise -> (c, (Valid (I 0)))  
 
 --NAND
 eval (Nand p q) c = undefined --TODO
@@ -210,8 +231,9 @@ arithHelper (Divide l r) c =
   in  case (l', r') of
       (Nil     , _       ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
       (_       , Nil     ) -> (c, Err (E (BadOperands "Cannot evaluate Nil") [] ))
-      (Err l  , _      ) -> (c, Err (E (BadOperands "Invalid operands to divide") [] ))
-      (_      , Err r  ) -> (c, Err (E (BadOperands "Invalid operands to divide") [] ))
+      (Err l  , Err r    ) -> (c, Err (E (BadOperands "Invalid operands to divide") [l, r] ))
+      (Err l  , _      ) -> (c, Err (E (BadOperands "Invalid operands to divide") [l] ))
+      (_      , Err r  ) -> (c, Err (E (BadOperands "Invalid operands to divide") [r] ))
       (Valid n, Valid d) -> arithHelper (Divide (Lit n) (Lit d)) c
 
 
