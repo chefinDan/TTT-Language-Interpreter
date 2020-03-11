@@ -83,7 +83,7 @@ This operation produces an error because an integer cannot be
 arithmetically added to a string.
 
 To run it:  
-  runBadDemo 1
+  runBadDemo1
 
 The expected output is:
   Invalid operands to add.
@@ -94,7 +94,7 @@ This program defines a main function with one parameter. The parameter is undefi
 This operation produces an error because the variable used in the multiplication expression is undefined.
 
 To run it:  
-  runBadDemo 2
+  runBadDemo2
 
 The expected output is:
   Undefined reference to variable val.
@@ -106,7 +106,7 @@ This program is similar to baddemo1 in that it uses a string as an operand in ar
 This operation produces an error because the integer used in the multiplication expression is negative.
 
 To run it:  
-  runBadDemo 3
+  runBadDemo3
 
 The expected output is:
   Cannot multiply a string by a negative number.
@@ -116,7 +116,7 @@ The expected output is:
 This program assigns the integer value 0 to a variable and attempts to use said variable as the denominator in a Divide Expression. This operation produces an error because division by zero is undefined.
 
 To run it:  
-  runBadDemo 4
+  runBadDemo4
 
 The expected output is:
   Denominator cannot be 0
@@ -128,7 +128,7 @@ This operation produces an error because the condition in the while loop allows 
 The last line in the program output is Valid (I 0); this indicates a "false" value. This is printed because the condition in the while loop is the last Expression evaluated, hence it is the function's return value.     
 
 To run it:  
-  runBadDemo 5
+  runBadDemo5
 
 The expected output is:
   AssignIdx: Out of Bounds
@@ -139,7 +139,7 @@ This program produces two different errors. First it attempts to call a undefine
 This program produces errors because you cannot call an undefined function, nor can you assign a variable a non-value, in this cae "nil".    
 
 To run it:  
-  runBadDemo 6
+  runBadDemo6
 
 The expected output is:
   Function call to func failed: no such function.
@@ -150,7 +150,7 @@ The expected output is:
 This program does not produce a error in the literal sense, but demonstrates possibly unexpected behavior due to the user not understanding that arguments to functions are pass-by-value only. A function is defined that takes a single parameter and increments that value by one. After calling the function, the value of the variable passed to the function has not changed. 
 
 To run it:  
-  runBadDemo 7
+  runBadDemo7
 
 The expected output is:
   Valid (I 5)
