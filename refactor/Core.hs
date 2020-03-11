@@ -158,9 +158,9 @@ eval (Nand l r) c =
    let (c' , l') = eval l c
        (c'', r') = eval r c'
    in  case (l', r') of
-        (Err l, Err r) -> (c'', Err (E (BadOperands "comparator") [l, r]))
-        (Err l, _    ) -> (c'', Err (E (BadOperands "comparator") [l]))
-        (_    , Err r) -> (c'', Err (E (BadOperands "comparator") [r]))
+        (Err l, Err r) -> (c'', Err (E (BadOperands "Nand") [l, r]))
+        (Err l, _    ) -> (c'', Err (E (BadOperands "Nand") [l]))
+        (_    , Err r) -> (c'', Err (E (BadOperands "Nand") [r]))
 
         (n1 , n2) -> case ( (extractTruth n1) ,(extractTruth n2)) of
                                         (True, True) -> (c'', Valid (I 0))
