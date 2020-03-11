@@ -158,3 +158,11 @@ The expected output is:
 What the user might have expected:
   Valid (I 6)
 
+#### baddemo8
+List concatenation can only be done on List values. While in Haskell a string is just a list of chars, it is not so in our language. This program produces an invalid operands to List concatenation error.
+
+To run it:  
+  runBadDemo8
+
+The expected output is:
+  "Invalid operands to List Concatenation."
