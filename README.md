@@ -3,7 +3,7 @@
 
 Michael Andrews andrmich
 Daniel Green greendan
-Nicholas Matusmoto matsumon
+Nicholas Matsumoto matsumon
 Quan Nguyen nguyenq2
 
 ## Introduction
