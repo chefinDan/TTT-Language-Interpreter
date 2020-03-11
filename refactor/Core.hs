@@ -274,7 +274,7 @@ listHelper (AssignIdx i e l) c =
       (c''', i') = eval i c''
   in  case (i', e', l') of
         (Valid (I a), Valid d, Valid (List xs)) -> if a >= length xs || a < 0
-          then (c''', Err (E AssignIdxOOB []))
+          then (c''', Err (E (IdxOutOfBounds a) []))
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, Err (E (BadOperands "Index Assignment") []))
 
@@ -385,5 +385,6 @@ data ErrType =
   | ParameterMismatch
   | ParameterBind
   | DivideByZero
+  | IdxOutOfBounds Int
 
   deriving (Eq, Show)

@@ -53,6 +53,7 @@ errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
 errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
 errTypeToString (BindNotValue s) = "Error in binding \"" ++ s ++ "\": error in expression to be bound."
 errTypeToString (DivideByZero) = "Cannot divide by zero."
+errTypeToString (IdxOutOfBounds n) = "Array index: " ++ show n ++ " out of bounds"
 
 --Catch-all:
 errTypeToString x =
@@ -290,32 +291,21 @@ baddemo3 = Fn
   ]
 ---- 4. Division by zero 
 
-{-
 baddemo4 :: Value
 baddemo4 = Fn
   []
   [
     Bind "zero" (Lit (I 0)),
-    Divide (Lit (I 2)) (Dereference "zero")
+    ArithExp (Divide (Lit (I 2)) (Dereference "zero"))
   ]
--}
 
 ---- 5. Accessing out of bounds element in list via while loop
 baddemo5 :: Value
 baddemo5 = Fn
   []
   [
-    Bind "idx" (Lit (I 0)),
-    Bind "badLen" (Lit (I 4)),
     Bind "list" (Lit (List [I 2, I 3, I 4])),
-    Bind "val" (Lit (I 9)),
-    While (Call "not" [Equ (Dereference "idx") (Dereference "badLen")])
-    [
-      Bind "list" (ListExp (AssignIdx (Dereference "idx") 
-                (Dereference "val") 
-                (Dereference "list"))),
-      increment "idx"
-    ]
+    ListExp (AssignIdx (Lit $ I 10) (Lit $ I 5) (Dereference "list"))
   ]
 ---- 6. Assigning non-value to variable and calling undefined function 
 baddemo6 :: Value
@@ -327,31 +317,36 @@ baddemo6 = Fn
 
 ---- 7. Args to functions are passed by value, this demo defines a variable
 --      and a function to increment the variable. The variable is then "returned"
---      after calling the function and te value has no changed.  
+--      after calling the function and the value has no changed.  
 baddemo7 :: Value 
 baddemo7 = Fn
   []
   [
     Bind "num" (Lit (I 5)),
-    define "add1" ["val"] [increment ":rval"],
+    define "add1" ["val"] [increment "val"],
     Call "add1" [Dereference "num"],
     Dereference "num"
   ]
 
 
 --Helper function to run the baddemo progs 
+runBadDemo1 :: IO()
+runBadDemo1 = run baddemo1 library
 
-{-
-runBadDemo :: Int -> Result
-runBadDemo n = run library
-  (if n == 1 then baddemo1
-  else if n == 2 then baddemo2
-  else if n == 3 then baddemo3
-  else if n == 4 then baddemo4
-  else if n == 5 then baddemo5
-  else if n == 6 then baddemo6
-  else if n == 7 then baddemo7
-  else noProg n)                  
-noProg :: Int -> Value
-noProg n = Fn [] [Lit (S ("runBadDemo Error: Cannot find program baddemo" ++ (show n)))]
--}
+runBadDemo2 :: IO()
+runBadDemo2 = run baddemo2 library
+
+runBadDemo3 :: IO()
+runBadDemo3 = run baddemo3 library
+
+runBadDemo4 :: IO()
+runBadDemo4 = run baddemo4 library
+
+runBadDemo5 :: IO()
+runBadDemo5 = run baddemo5 library
+
+runBadDemo6 :: IO()
+runBadDemo6 = run baddemo6 library
+
+runBadDemo7 :: IO()
+runBadDemo7 = run baddemo7 library
