@@ -328,6 +328,17 @@ baddemo7 = Fn
     Dereference "num"
   ]
 
+-- 8. List concatenation can only be done on List values. While in Haskell
+--    a string is just a list of chars, it is not so in our language. This produces
+--    an invalid operands to List concatenation error.
+baddemo8 :: Value
+baddemo8 = Fn
+  []
+  [
+    Bind "aList" (Lit (List [I 2, I 3, I 4, I 5])),
+    Bind "notList" $ Lit (S "notAList"),
+    ListExp (AddLists (Dereference "aLst") (Dereference "notList"))
+  ]
 
 --Helper function to run the baddemo progs 
 runBadDemo1 :: IO()
@@ -350,3 +361,6 @@ runBadDemo6 = run baddemo6 library
 
 runBadDemo7 :: IO()
 runBadDemo7 = run baddemo7 library
+
+runBadDemo8 :: IO()
+runBadDemo8 = run baddemo8 library
