@@ -50,14 +50,19 @@ errTypeToString ParameterMismatch =
   "Mismatch between parameter and argument counts.\n"
 errTypeToString ParameterBind     = "Error while binding function parameters."
 errTypeToString (UnhandledEval s) = "UNHANDLED EVAL CASE: " ++ s ++ "\n"
-errTypeToString MultiplyStringByNegative = "Cannot multiply a string by a negative number." 
-errTypeToString (BindNotValue s) = "Error in binding \"" ++ s ++ "\": error in expression to be bound."
-errTypeToString (DivideByZero) = "Cannot divide by zero."
-errTypeToString (IdxOutOfBounds n) = "Array index: " ++ show n ++ " out of bounds"
+errTypeToString MultiplyStringByNegative =
+  "Cannot multiply a string by a negative number."
+errTypeToString (BindNotValue s) =
+  "Error in binding \"" ++ s ++ "\": error in expression to be bound."
+errTypeToString DivideByZero = "Cannot divide by zero."
+errTypeToString (IdxOutOfBounds n) =
+  "Array index: " ++ show n ++ " out of bounds"
 
 --Catch-all:
 errTypeToString x =
-  "Error in reporting error: ErrorType \"" ++ show x ++ "\" has no defined string."
+  "Error in reporting error: ErrorType \""
+    ++ show x
+    ++ "\" has no defined string."
 
 stringifyErrors :: Error -> [String]
 stringifyErrors (E e []) = [errTypeToString e]
@@ -92,18 +97,18 @@ buildLibrary c ((n, fn) : ts) = buildLibrary (Data.Map.Strict.insert n fn c) ts
 library :: Context
 library = buildLibrary
   emptyContext
-  [ ("doubler", doubler)
-  , ("fib"    , fib)
-  , ("maplist", maplist)
-  , ("not"    , not)
-  , ("and"    , and)
-  , ("or"     , or)
-  , ("xor"    , xor)
-  , ("nor"    , nor)
-  , ("xnor"   , xnor)
+  [ ("doubler"      , doubler)
+  , ("fib"          , fib)
+  , ("maplist"      , maplist)
+  , ("not"          , not)
+  , ("and"          , and)
+  , ("or"           , or)
+  , ("xor"          , xor)
+  , ("nor"          , nor)
+  , ("xnor"         , xnor)
   , ("greaterThanEQ", greaterThanEQ)
-  , ("lessThanEQ", lessThanEQ)
-  , ("greaterThan", greaterThan)
+  , ("lessThanEQ"   , lessThanEQ)
+  , ("greaterThan"  , greaterThan)
   ]
 
 
@@ -145,19 +150,23 @@ runFibonacci n = run (Fn [] [Call "fib" [Lit (I n)]]) library
 -- Equality Operators
 
 greaterThanEQ :: Value
-greaterThanEQ = Fn 
-                ["p", "q"] 
-                [Call "not" [LessThan (Dereference "p") (Dereference "q")]]
+greaterThanEQ =
+  Fn ["p", "q"] [Call "not" [LessThan (Dereference "p") (Dereference "q")]]
 
 lessThanEQ :: Value
-lessThanEQ = Fn 
-             ["p", "q"] 
-             [Call "or" [Equ (Dereference "p") (Dereference "q"), LessThan (Dereference "p") (Dereference "q")]]
+lessThanEQ = Fn
+  ["p", "q"]
+  [ Call
+      "or"
+      [ Equ (Dereference "p") (Dereference "q")
+      , LessThan (Dereference "p") (Dereference "q")
+      ]
+  ]
 
 greaterThan :: Value
-greaterThan = Fn 
-              ["p", "q"] 
-              [Call "not" [Call "lessThanEQ" [Dereference "p", Dereference "q"]]]
+greaterThan = Fn
+  ["p", "q"]
+  [Call "not" [Call "lessThanEQ" [Dereference "p", Dereference "q"]]]
 
 
 
@@ -247,18 +256,29 @@ runMapDemo :: IO ()
 runMapDemo = run mapdemo library
 
 {- errornesting demonstrates our error handling:  It's a two line
- - function with an error on the first line, but that first line 
+ - function with an error on the first line, but that first line
  - is a complicated nested call.  The output is a nested series
  - of errors about invalid operands to add, terminating in an
  - error complaining that "Boo" is undefined.  The second line
  - of the function is never executed. -}
+errorDemo :: IO ()
+errorDemo = run errornesting library
+
 errornesting :: Value
 errornesting = Fn
   []
-  [ ArithExp (Add (Lit (I 1)) 
-     (ArithExp (Add (Lit (I 1))
-       (ArithExp (Add (Lit (I 1))
-         (ArithExp (Add (Lit (I 1)) (Dereference "BOO!"))))))))
+  [ ArithExp
+    (Add
+      (Lit (I 1))
+      (ArithExp
+        (Add
+          (Lit (I 1))
+          (ArithExp
+            (Add (Lit (I 1)) (ArithExp (Add (Lit (I 1)) (Dereference "BOO!"))))
+          )
+        )
+      )
+    )
   , Dereference "The program should never get here!"
   ]
 
@@ -275,57 +295,40 @@ baddemo1 = Fn
   ]
 
 
----- 2. Attempts to multiply an int literal by an undefined variable,  
+---- 2. Attempts to multiply an int literal by an undefined variable,
 baddemo2 :: Value
-baddemo2 = Fn
-  []
-  [
-    ArithExp (Multiply (Lit (I 2)) (Dereference "val"))
-  ]
----- 3. Attempts to Multiply a string by a negative number 
+baddemo2 = Fn [] [ArithExp (Multiply (Lit (I 2)) (Dereference "val"))]
+---- 3. Attempts to Multiply a string by a negative number
 baddemo3 :: Value
-baddemo3 = Fn
-  []
-  [
-    ArithExp (Multiply (Lit (S "oops")) (Lit (I (-2))))
-  ]
----- 4. Division by zero 
+baddemo3 = Fn [] [ArithExp (Multiply (Lit (S "oops")) (Lit (I (-2))))]
+---- 4. Division by zero
 
 baddemo4 :: Value
 baddemo4 = Fn
   []
-  [
-    Bind "zero" (Lit (I 0)),
-    ArithExp (Divide (Lit (I 2)) (Dereference "zero"))
-  ]
+  [Bind "zero" (Lit (I 0)), ArithExp (Divide (Lit (I 2)) (Dereference "zero"))]
 
 ---- 5. Accessing out of bounds element in list via while loop
 baddemo5 :: Value
 baddemo5 = Fn
   []
-  [
-    Bind "list" (Lit (List [I 2, I 3, I 4])),
-    ListExp (AssignIdx (Lit $ I 10) (Lit $ I 5) (Dereference "list"))
+  [ Bind "list" (Lit (List [I 2, I 3, I 4]))
+  , ListExp (AssignIdx (Lit $ I 10) (Lit $ I 5) (Dereference "list"))
   ]
----- 6. Assigning non-value to variable and calling undefined function 
+---- 6. Assigning non-value to variable and calling undefined function
 baddemo6 :: Value
-baddemo6 = Fn
-  []
-  [
-    Bind "result" (Call "func" [Lit (I 2)]) 
-  ]
+baddemo6 = Fn [] [Bind "result" (Call "func" [Lit (I 2)])]
 
 ---- 7. Args to functions are passed by value, this demo defines a variable
 --      and a function to increment the variable. The variable is then "returned"
---      after calling the function and the value has no changed.  
-baddemo7 :: Value 
+--      after calling the function and the value has no changed.
+baddemo7 :: Value
 baddemo7 = Fn
   []
-  [
-    Bind "num" (Lit (I 5)),
-    define "add1" ["val"] [increment "val"],
-    Call "add1" [Dereference "num"],
-    Dereference "num"
+  [ Bind "num" (Lit (I 5))
+  , define "add1" ["val"] [increment "val"]
+  , Call "add1" [Dereference "num"]
+  , Dereference "num"
   ]
 
 -- 8. List concatenation can only be done on List values. While in Haskell
@@ -334,33 +337,32 @@ baddemo7 = Fn
 baddemo8 :: Value
 baddemo8 = Fn
   []
-  [
-    Bind "aList" (Lit (List [I 2, I 3, I 4, I 5])),
-    Bind "notList" $ Lit (S "notAList"),
-    ListExp (AddLists (Dereference "aLst") (Dereference "notList"))
+  [ Bind "aList" (Lit (List [I 2, I 3, I 4, I 5]))
+  , Bind "notList" $ Lit (S "notAList")
+  , ListExp (AddLists (Dereference "aLst") (Dereference "notList"))
   ]
 
---Helper function to run the baddemo progs 
-runBadDemo1 :: IO()
+--Helper function to run the baddemo progs
+runBadDemo1 :: IO ()
 runBadDemo1 = run baddemo1 library
 
-runBadDemo2 :: IO()
+runBadDemo2 :: IO ()
 runBadDemo2 = run baddemo2 library
 
-runBadDemo3 :: IO()
+runBadDemo3 :: IO ()
 runBadDemo3 = run baddemo3 library
 
-runBadDemo4 :: IO()
+runBadDemo4 :: IO ()
 runBadDemo4 = run baddemo4 library
 
-runBadDemo5 :: IO()
+runBadDemo5 :: IO ()
 runBadDemo5 = run baddemo5 library
 
-runBadDemo6 :: IO()
+runBadDemo6 :: IO ()
 runBadDemo6 = run baddemo6 library
 
-runBadDemo7 :: IO()
+runBadDemo7 :: IO ()
 runBadDemo7 = run baddemo7 library
 
-runBadDemo8 :: IO()
+runBadDemo8 :: IO ()
 runBadDemo8 = run baddemo8 library

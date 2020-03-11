@@ -63,13 +63,33 @@ multiplies its argument by three, producing
 ["foofoofoo", "barbarbar", "bazbazbaz"].
 
 The function passed to map in the first case is a bound variable, and in the
-second case an unbound function literal is passed in, and bound inside the mapper.
+second case an unbound function literal is passed in, and bound inside the
+mapper.
 
 To run it:
 	runMapDemo
 
 The expected output is:
 	Valid (List [I 20,I 40,I 60,S "foofoofoo",S "barbarbar",S "bazbazbaz"])
+
+### Error handling demo.
+For the final submission, we've added a program that briefly demonstrates our
+new error handling.  It consists of two lines: one that recursively causes a
+nested cascade of errors four layers reep, and a second line that causes one
+error.  The intended purpose is to demonstrate both the nesting of errors
+and the halting of execution upon finding one: the second line, in this case,
+simply does not execute.
+
+To run it:
+	errorDemo
+
+The expected output is:
+
+Invalid operands to Add.
+  Invalid operands to Add.
+    Invalid operands to Add.
+      Invalid operands to Add.
+        Could not defererence name "BOO!" not bound to any value in current scope.
 
 ### "Bad program" Demos.
 There are 7 defined programs that demonstrate various erroneous or 

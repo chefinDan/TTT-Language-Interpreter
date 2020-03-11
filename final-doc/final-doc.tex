@@ -44,6 +44,7 @@ By taking this approach, nearly everything can be composed arbitrarily.  Note th
 
 There is also the question of scope.  `State' in our language is a collection (a hashmap, in fact) of names bound to literal values.  Since functions are first-class values in our language, the state is the repository of all bound functions.  A function has in its definition a list of names (parameters;) when a function is called, a list of expressions is provided (arguments,) and these are bound pairwise to the parameter names in the function definition to form a new state, which is passed into the function call.  Variables which are themselves functions are also passed in, but variables of any other type are stripped out.  When a function returns, any functions which were bound to variables inside are passed back to the call site's state, but all other variables are discarded.  In this way, function variables are global, but all other kinds of variable are local.
 
+This approach makes our scoping system dynamic from a technical standpoint, inasmuch as there is no closure system.  From a practical standpoint, however, because we do not allow global variables other than functions (and function bindings themselves are immutable,) this makes very little difference: the only free variables visible from inside a function's scope are immutable.  The approach is dynamic, but in practice, scope is so restricted as to make the distinction relatively unimportant.
 
 We have tried to implement as core features only things which we feel are needed to allow the language to be sufficiently expressive, and which we have been unable to find a way to implement as sugar on existing features.  (While loops are the exception.)
 
@@ -86,13 +87,13 @@ Our language has a number of features not listed here, like boolean operations f
 
 The existence of Nil, and the general unpredictability of List operations, make a static type system infeasible.  For example, it is not enough to know that the Index operation was called, and that the operands are an integer and a list: without knowing both the size of the list, its contents, and the \emph{exact} integer, we cannot know what the return will be.  This makes the static typing approaches covered in the class materials impractical as long as the language is run in an interpreted fashion.
 
-Next, we come to the question of error handling.  We have revamped it since the milestone to use a more idiomatic style.  We have a recursively-defined Error type, which has the following definition:
+Next, we come to the question of error handling.  We have revamped it since the milestone to use a more idiomatic style.  We have a recursively-defined \texttt{Error} type, which has the following definition:
 
 \begin{lstlisting}
 data Error = E ErrType [Error]
 \end{lstlisting}
 
-The ErrType datatype has a constructor for every category of error we have defined: by using a recursive data type for Errors themselves, we can thereby create, in Haskell, a representation of an Error (and any sub-errors that contributed to it) that captures the nature of the problem.  And, of course, we can print it for the user when the program is run.
+The \texttt{ErrType} datatype has a constructor for every category of error we have defined: by using a recursive data type for Errors themselves, we can thereby create, in Haskell, a representation of an Error (and any sub-errors that contributed to it) that captures the nature of the problem.  And, of course, we can print it for the user when the program is run.
 
 We now halt execution on the first line that contains an error: due to composability, that may result in any number of nested errors, which can be inspected in Haskell when using \texttt{eval} directly, and which are printed as indentation-nested strings for clarity when using \texttt{run}.
 
@@ -104,7 +105,7 @@ Our language has two semantic domains, one for Expressions and one for Programs.
 Context -> Expression -> (Context, Result)
 \end{lstlisting}
 
-Context, in this context (ha!) is a strict hashmap that contains the state; the collection of Name/Value bindings known to the current Expression.  (Due to scoping, this may not be everything known to every part of the program.)
+Context, in this context is a strict hashmap that contains the state; the collection of Name/Value bindings known to the current Expression.  (Due to scoping, this may not be everything known to every part of the program.)
 
 Result has the following definition:
 
@@ -112,14 +113,16 @@ Result has the following definition:
 data Result = Valid Value | Error | Nil
 \end{lstlisting}
 
+(See the Safety section for a brief discussion of Nil; the short version is that exists to support our desired behaviors for certain list operations.)
+
 This domain was chosen because our program has a mutable state; each individual expression must necessarily receive a copy of that state, and return a (possibly modified) state for the next expression to use.
 
 The semantic domain for programs is:
 
 \begin{lstlisting}
-Context -> Value -> Result
+Context -> Value -> IO ()
 \end{lstlisting}
 
-This is akin to the domain for statement evaluation, except that we cannot take an expression (because no program is yet running to evaluate it) so we must take a raw function literal. The second argument (the Value) is the function literal to be run; if that seems odd, recall that functions are a basic data type in our language. (Attempting to run a non-function literal, is, of course, an error.)  A context is passed in, containing the library, or whatever other definitions the user wishes to pass in.  This forms the initial state for the program. Only a value is returned, because once the program has finished, the state no longer has meaning.  We also decided not to allow arguments to be passed in to programs themselves; we may revisit that, however.
+This is akin to the domain for statement evaluation, except that we cannot take an expression (because no program is yet running to evaluate it) so we must take a raw function literal. The second argument (the Value) is the function literal to be run; if that seems odd, recall that functions are a basic data type in our language. (Attempting to run a non-function literal, is, of course, an error.)  A context is passed in, containing the library, or whatever other definitions the user wishes to pass in.  This forms the initial state for the program. When the program is finished, we take the \texttt{(Context, Result)} returned by evaluation of its final statement and print only the user-relevant portions of the \texttt{Result}.
 
 \end{document}
