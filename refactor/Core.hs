@@ -142,20 +142,34 @@ eval (LessThan l r) c =
   let (c' , l') = eval l c
       (c'', r') = eval r c'
   in  case (l', r') of
-        (Nil  , _    ) -> (c, Err (E (BadOperands "comparator") []))
-        (_    , Nil  ) -> (c, Err (E (BadOperands "comparator") []))
-        (Err l, Err r) -> (c, Err (E (BadOperands "comparator") [l, r]))
-        (Err l, _    ) -> (c, Err (E (BadOperands "comparator") [l]))
-        (_    , Err r) -> (c, Err (E (BadOperands "comparator") [r]))
+        (Nil  , _    ) -> (c'', Err (E (BadOperands "comparator") []))
+        (_    , Nil  ) -> (c'', Err (E (BadOperands "comparator") []))
+        (Err l, Err r) -> (c'', Err (E (BadOperands "comparator") [l, r]))
+        (Err l, _    ) -> (c'', Err (E (BadOperands "comparator") [l]))
+        (_    , Err r) -> (c'', Err (E (BadOperands "comparator") [r]))
 
-        (Valid (I n1), Valid (I n2)) | n1 < n2   -> (c, Valid (I 1))
-                                     | otherwise -> (c, Valid (I 0))
-        (Valid (S s1), Valid (S s2)) | s1 < s2   -> (c, Valid (I 1))
-                                     | otherwise -> (c, Valid (I 0))
+        (Valid (I n1), Valid (I n2)) | n1 < n2   -> (c'', Valid (I 1))
+                                     | otherwise -> (c'', Valid (I 0))
+        (Valid (S s1), Valid (S s2)) | s1 < s2   -> (c'', Valid (I 1))
+                                     | otherwise -> (c'', Valid (I 0))
 
 --NAND
-eval (Nand p q) c = undefined --TODO
+eval (Nand l r) c = 
+   let (c' , l') = eval l c
+       (c'', r') = eval r c'
+   in  case (l', r') of
+        (Nil  , _    ) -> (c'', Err (E (BadOperands "comparator") []))
+        (_    , Nil  ) -> (c'', Err (E (BadOperands "comparator") []))
+        (Err l, Err r) -> (c'', Err (E (BadOperands "comparator") [l, r]))
+        (Err l, _    ) -> (c'', Err (E (BadOperands "comparator") [l]))
+        (_    , Err r) -> (c'', Err (E (BadOperands "comparator") [r]))
 
+        (Valid (I n1), Valid (I n2)) -> case ( (n1 == 1) ,(n2 == 1)) of
+                                        (True, True) -> (c'', Valid (I 0))
+                                        _ -> (c'', Valid (I 1))
+        (Valid (S n1), Valid (I n2)) -> (c'', Valid (I 1))
+        (Valid (I n1), Valid (S n2)) -> (c'', Valid (I 1))
+        
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
 but intermediate results are basically rvalues and are discarded between lines;
