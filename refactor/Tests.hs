@@ -62,3 +62,52 @@ import RunLibrary
 --
 --   >>> eval (LessThan (ArithExp (Add (Lit (I 1)) (Lit (S "foo")))) (Dereference "bar")) emptyContext
 --   (fromList [],Err (E (BadOperands "comparator") [E (BadOperands "Add") [],E (DerefUnbound "bar") []]))
+--
+--   >>> eval (Nand (Lit (I 10)) (Lit (I 10))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (I 0)) (Lit (I 0))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (Nand (Lit (I 1)) (Lit (I 1))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (I 1)) (Lit (I 0))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (Nand (Lit (I 0)) (Lit (I 1))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (Nand (Lit (S "foo")) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (S "bar")) (Lit (S "foo"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (S "bar")) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (S "bar")) (Lit (I 10))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (S "bar")) (Lit (I 0))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (Nand (Lit (S "bar")) (Lit (I 1))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (I 9)) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (I 0)) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 1))
+--
+--   >>> eval (Nand (Lit (I 1)) (Lit (S "bar"))) emptyContext
+--   (fromList [],Valid (I 0))
+--
+--   >>> eval (Nand (Lit (S "foo")) (Dereference "bar")) emptyContext
+--   (fromList [],Err (E (BadOperands "Nand") [E (DerefUnbound "bar") []]))
+--
+--   >>> eval (Nand (ArithExp (Add (Lit (I 1)) (Lit (S "foo")))) (Dereference "bar")) emptyContext
+--   (fromList [],Err (E (BadOperands "Nand") [E (BadOperands "Add") [],E (DerefUnbound "bar") []]))
+
