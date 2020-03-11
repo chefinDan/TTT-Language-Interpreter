@@ -40,11 +40,10 @@ Assign "y" (Add (Assign "x" (Var (I 3)) (increment "x"))
 
 In \"T\"T\"T, this is perfectly valid.  Assign both binds a literal to a name and evaluates to the bound value; increment (which is syntactic sugar) both modifies the bound value associated with the name and evaluates to the result.  The overall expression would therefore evaluate to 7, and afterwards the name \texttt{y} would bound to the value 7, while \texttt{x} would be bound to 4.
 
-By taking this approach, nearly everything can be composed arbitrarily.  Note that this flexibility does come at a cost, though: because nearly everything in the grammar is composed of the same Haskell type, it is extremely easy to pass an invalid argument to almost any expression: Add expects, ultimately, to get either two integers or two strings: nothing stops the user from writing a program that attempts to add a function to an error.  This necessitates robust error reporting; we used the Debug.trace library to allow programs to emit descriptive errors at runtime.
+By taking this approach, nearly everything can be composed arbitrarily.  Note that this flexibility does come at a cost, though: because nearly everything in the grammar is composed of the same Haskell type, it is extremely easy to pass an invalid argument to almost any expression: Add expects, ultimately, to get either two integers or two strings: nothing stops the user from writing a program that attempts to add two functions, though this does of course result in an error.
 
 There is also the question of scope.  `State' in our language is a collection (a hashmap, in fact) of names bound to literal values.  Since functions are first-class values in our language, the state is the repository of all bound functions.  A function has in its definition a list of names (parameters;) when a function is called, a list of expressions is provided (arguments,) and these are bound pairwise to the parameter names in the function definition to form a new state, which is passed into the function call.  Variables which are themselves functions are also passed in, but variables of any other type are stripped out.  When a function returns, any functions which were bound to variables inside are passed back to the call site's state, but all other variables are discarded.  In this way, function variables are global, but all other kinds of variable are local.
 
-We feel that at this point, the language is largely operational, and our aim is to improve usability by adding more features as sugar and as library functions.
 
 We have tried to implement as core features only things which we feel are needed to allow the language to be sufficiently expressive, and which we have been unable to find a way to implement as sugar on existing features.  (While loops are the exception.)
 
@@ -83,11 +82,19 @@ Our language has a number of features not listed here, like boolean operations f
 
 \section*{Safety}
 
-Due to the heavily composable nature of \"T\"T\"T, there are a great many errors that can occur.  It's possible to write a valid (Haskell) program in our language in which every operation finds itself with the wrong operands.  We handle this in two ways.  Firstly, our semantic domain for evaluating expressions (and programs) allows for the possibility of returning an error.  (More on this in the next section.)  Secondly, any time an expression evaluates to an error, we take advantage of Haskell's debug tracing to print an appropriate message to the console.  Because the program will keep running, a lot of error messages can pile up, but of course, the first one emitted is the first place to look to begin fixing them.
+\"T\"T\"T is a dynamically-typed language.  Static typing is infeasible due to our List operations, and the design decisions we made regarding how we wanted to handle certain operations.  Specifically, the issue is Nil.  In our milestone feedback, the question of why Nil exists was raised, and the answer is simply: so that an out-of-bounds read from a list can return something which is not an error.  There is no tombstone value we could return in that context: the idea of an empty list was floated, but because our lists are not type-specific, an empty list is in fact a valid possible return from any list.
 
-We considered using a static type system, but ultimately felt it offered no real benefit given the way the language is currently used.  For example, consider the Index expression, which returns the value held at some index in a list.  What type that returns depends not only on the types held in the list (which is easily knowable,) but on precisely which index is requested.  That requires us to know not merely that an integer value of some sort is being used in the Expression, but exactly \emph{which} integer it is: to find that out, we essentially need to fully evaluate the program.  At that point, static type checking amounts to nothing more than running the program twice.
+The existence of Nil, and the general unpredictability of List operations, make a static type system infeasible.  For example, it is not enough to know that the Index operation was called, and that the operands are an integer and a list: without knowing both the size of the list, its contents, and the \emph{exact} integer, we cannot know what the return will be.  This makes the static typing approaches covered in the class materials impractical as long as the language is run in an interpreted fashion.
 
-We may revisit this later if we decide to implement a compilation step later on; at that point, a full evaluation of the program prior to running makes sense.
+Next, we come to the question of error handling.  We have revamped it since the milestone to use a more idiomatic style.  We have a recursively-defined Error type, which has the following definition:
+
+\begin{lstlisting}
+data Error = E ErrType [Error]
+\end{lstlisting}
+
+The ErrType datatype has a constructor for every category of error we have defined: by using a recursive data type for Errors themselves, we can thereby create, in Haskell, a representation of an Error (and any sub-errors that contributed to it) that captures the nature of the problem.  And, of course, we can print it for the user when the program is run.
+
+We now halt execution on the first line that contains an error: due to composability, that may result in any number of nested errors, which can be inspected in Haskell when using \texttt{eval} directly, and which are printed as indentation-nested strings for clarity when using \texttt{run}.
 
 \section*{Implementation}
 
