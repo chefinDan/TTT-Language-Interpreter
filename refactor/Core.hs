@@ -154,19 +154,19 @@ eval (LessThan l r) c =
                                      | otherwise -> (c'', Valid (I 0))
 
 --NAND
-eval (Nand l r) c = 
-   let (c' , l') = eval l c
-       (c'', r') = eval r c'
-   in  case (l', r') of
+eval (Nand l r) c =
+  let (c' , l') = eval l c
+      (c'', r') = eval r c'
+  in  case (l', r') of
         (Err l, Err r) -> (c'', Err (E (BadOperands "Nand") [l, r]))
         (Err l, _    ) -> (c'', Err (E (BadOperands "Nand") [l]))
         (_    , Err r) -> (c'', Err (E (BadOperands "Nand") [r]))
 
-        (n1 , n2) -> case ( (extractTruth n1) ,(extractTruth n2)) of
-                                        (True, True) -> (c'', Valid (I 0))
-                                        _ -> (c'', Valid (I 1))
-        
-        
+        (n1   , n2   ) -> case (extractTruth n1, extractTruth n2) of
+          (True, True) -> (c'', Valid (I 0))
+          _            -> (c'', Valid (I 1))
+
+
 {- foldExpressions is the basic function for crunching a series of expressions
 down to some final value.  The context is passed from expression to expression,
 but intermediate results are basically rvalues and are discarded between lines;
@@ -227,7 +227,7 @@ arithHelper (Multiply l r) c =
         (Valid a, Valid b) -> arithHelper (Multiply (Lit a) (Lit b)) c
 
 -- Division
-arithHelper (Divide _ (Lit (I 0))) c = (c, Err (E (DivideByZero) []))
+arithHelper (Divide _ (Lit (I 0))) c = (c, Err (E DivideByZero []))
 arithHelper (Divide _ (Lit (S s))) c = (c, Err (E (BadOperands "divide") []))
 arithHelper (Divide (Lit (S s)) (Lit (I n))) c = (c, Valid (substring n (S s)))
 arithHelper (Divide (Lit (I n)) (Lit (I d))) c = (c, Valid (I (n `div` d)))
@@ -264,8 +264,6 @@ listHelper (Index e l) c =
         (_       , Err errR) -> (c'', Err (E (BadOperands "Index") [errR]))
         _                    -> (c'', Err (E (BadOperands "Index") []))
 
-listHelper (Append  e l) c = undefined --TODO
-listHelper (Prepend e l) c = undefined --TODO
 
 --ASSIGN TO LIST INDEX
 listHelper (AssignIdx i e l) c =
@@ -278,8 +276,28 @@ listHelper (AssignIdx i e l) c =
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, Err (E (BadOperands "Index Assignment") []))
 
---CONCATENATE LISTS
+-- ADD TO END OF LIST
+listHelper (Append e l) c =
+  let (c' , e') = eval e c
+      (c'', l') = eval l c'
+  in  case (e', l') of
+        (Valid (List xs), Valid (List ys)) -> (c'', Valid (List (ys ++ xs)))
+        (Valid a, Valid (List xs)) ->
+          eval (ListExp $ AddLists (Lit (List xs)) (Lit (List [a]))) c''
+        (_, _) -> (c'', Err (E (BadOperands "Append to List") []))
 
+
+-- ADD TO START OF LIST
+listHelper (Prepend e l) c =
+  let (c' , e') = eval e c
+      (c'', l') = eval l c'
+  in  case (e', l') of
+        (Valid (List xs), Valid (List ys)) -> (c'', Valid (List (xs ++ ys)))
+        (Valid a, Valid (List xs)) ->
+          eval (ListExp $ AddLists (Lit (List [a])) (Lit (List xs))) c''
+        (_, _) -> (c'', Err (E (BadOperands "Prepend to List") []))
+
+--CONCATENATE LISTS
 listHelper (AddLists e l) c =
   let (c' , e') = eval e c
       (c'', l') = eval l c'
