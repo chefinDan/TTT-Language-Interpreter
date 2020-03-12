@@ -264,8 +264,6 @@ listHelper (Index e l) c =
         (_       , Err errR) -> (c'', Err (E (BadOperands "Index") [errR]))
         _                    -> (c'', Err (E (BadOperands "Index") []))
 
-listHelper (Append  e l) c = undefined --TODO
-listHelper (Prepend e l) c = undefined --TODO
 
 --ASSIGN TO LIST INDEX
 listHelper (AssignIdx i e l) c =
@@ -278,8 +276,26 @@ listHelper (AssignIdx i e l) c =
           else (c''', Valid (List (changeIndex a d xs)))
         _ -> (c, Err (E (BadOperands "Index Assignment") []))
 
---CONCATENATE LISTS
+-- ADD TO END OF LIST
+listHelper (Append e l) c = 
+  let (c', e')  = eval e c
+      (c'', l') = eval l c'
+  in case (e', l') of
+       (Valid (List xs), Valid(List ys)) -> (c'', Valid (List (ys ++ xs)))
+       (Valid a, Valid(List xs))         -> eval (ListExp $ AddLists (Lit (List xs)) (Lit (List [a])) ) c''
+       (_, _)                            -> (c'', Err (E (BadOperands "Append to List") []))  
 
+
+-- ADD TO START OF LIST
+listHelper (Prepend e l) c =
+  let (c', e')  = eval e c
+      (c'', l') = eval l c'
+  in case (e', l') of
+       (Valid (List xs), Valid(List ys)) -> (c'', Valid (List (xs ++ ys)))
+       (Valid a, Valid(List xs))         -> eval (ListExp $ AddLists (Lit (List [a])) (Lit (List xs))) c''
+       (_, _)                            -> (c'', Err (E (BadOperands "Prepend to List") []))  
+
+--CONCATENATE LISTS
 listHelper (AddLists e l) c =
   let (c' , e') = eval e c
       (c'', l') = eval l c'

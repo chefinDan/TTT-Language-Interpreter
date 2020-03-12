@@ -340,6 +340,30 @@ baddemo8 = Fn
     ListExp (AddLists (Dereference "aLst") (Dereference "notList"))
   ]
 
+-- 9. Because our Lists can be mixed type the only error that will be encountered is by 
+--    passing a non-list value when a List is expected. This demo illustrates calling 
+--    Append on two strings and this type error causing program execution to stop. The third
+--    line of the function is never evaluated. 
+baddemo9 :: Value
+baddemo9 = Fn
+  []
+  [
+    Bind "notAList" $ Lit $ S "string",
+    Bind "list" $ ListExp $ Append (Lit $ S "string") (Dereference "notAList"),
+    ListExp $ Prepend (Lit $ I 1) (Dereference "list")
+  ]
+
+appendPrependDemo :: Value
+appendPrependDemo = Fn
+  []
+  [
+    Bind "list" $ Lit (List [I 2, I 3]),
+    Bind "list" $ ListExp $ Prepend (Lit $ I 1) (Dereference "list")
+  ]
+
+runAppendPrependDemo :: IO()
+runAppendPrependDemo = run appendPrependDemo library
+
 --Helper function to run the baddemo progs 
 runBadDemo1 :: IO()
 runBadDemo1 = run baddemo1 library
@@ -364,3 +388,6 @@ runBadDemo7 = run baddemo7 library
 
 runBadDemo8 :: IO()
 runBadDemo8 = run baddemo8 library
+
+runBadDemo9 :: IO()
+runBadDemo9 = run baddemo9 library
