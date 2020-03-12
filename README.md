@@ -166,3 +166,12 @@ To run it:
 
 The expected output is:
   "Invalid operands to List Concatenation."
+
+#### baddemo9
+Because our Lists can be mixed type the only error that will be encountered is by passing a non-list value when a List is expected. This demo illustrates calling Append on two strings and this type error causing program execution to stop. The third line of the function is never evaluated. 
+To run it:  
+  runBadDemo9
+
+The expected output is:
+  "Error in binding "list": error in expression to be bound.
+     Invalid operands to Append to List."

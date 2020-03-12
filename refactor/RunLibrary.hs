@@ -353,17 +353,6 @@ baddemo9 = Fn
     ListExp $ Prepend (Lit $ I 1) (Dereference "list")
   ]
 
-appendPrependDemo :: Value
-appendPrependDemo = Fn
-  []
-  [
-    Bind "list" $ Lit (List [I 2, I 3]),
-    Bind "list" $ ListExp $ Prepend (Lit $ I 1) (Dereference "list")
-  ]
-
-runAppendPrependDemo :: IO()
-runAppendPrependDemo = run appendPrependDemo library
-
 --Helper function to run the baddemo progs 
 runBadDemo1 :: IO()
 runBadDemo1 = run baddemo1 library
