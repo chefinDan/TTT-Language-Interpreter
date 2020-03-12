@@ -21,3 +21,5 @@ subtract l r = ArithExp (Add l (ArithExp (Multiply r (Lit (I (-1))))))
 --define is simply sugar for binding a function varaible.
 define :: Name -> [Name] -> [Expression] -> Expression
 define n ps es = Bind n (Lit (Fn ps es))
+
+

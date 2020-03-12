@@ -110,4 +110,24 @@ import RunLibrary
 --
 --   >>> eval (Nand (ArithExp (Add (Lit (I 1)) (Lit (S "foo")))) (Dereference "bar")) emptyContext
 --   (fromList [],Err (E (BadOperands "Nand") [E (BadOperands "Add") [],E (DerefUnbound "bar") []]))
+-- 
+--  >>> :{
+--   run
+--   (Fn [] [
+--     Bind "emptyList" $ Lit (List []),
+--     Bind "list" $ ListExp $ Append (Lit $ S "stringLit") (Dereference "emptyList")
+--   ]) 
+--   library
+--  :}
+--  [S "stringLit"]
+-- 
+--  >>> :{
+--   run 
+--   (Fn [] [
+--     Bind "list" $ Lit (List [I 2, I 3]),
+--     Bind "list" $ ListExp $ Prepend (Lit $ I 1) (Dereference "list")
+--   ])
+--   library
+--  :}
+--  [I 1,I 2,I 3]
 
