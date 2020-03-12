@@ -38,7 +38,7 @@ To run it:
 		where n is some positive integer.
 
 The expected output is:
-	Valid (I x)
+	x
 		where x is the nth number in the Fibonacci series
 
 Note: Because this is a naive implementation, be mindful of the time.  30 is a
@@ -70,7 +70,7 @@ To run it:
 	runMapDemo
 
 The expected output is:
-	Valid (List [I 20,I 40,I 60,S "foofoofoo",S "barbarbar",S "bazbazbaz"])
+	[I 20,I 40,I 60,S "foofoofoo",S "barbarbar",S "bazbazbaz"]
 
 ### Error handling demo.
 For the final submission, we've added a program that briefly demonstrates our
@@ -107,7 +107,6 @@ To run it:
 
 The expected output is:
   Invalid operands to add.
-  Error
 
 #### baddemo2
 This program defines a main function with one parameter. The parameter is undefined and is used in Multiply with an integer literal value.  
@@ -117,9 +116,8 @@ To run it:
   runBadDemo2
 
 The expected output is:
-  Undefined reference to variable val.
-  Invalid operands to multiply.
-  Error
+  Invalid operands to Multiply.
+    Could not defererence name "val" not bound to any value in current scope.
 
 #### baddemo3
 This program is similar to baddemo1 in that it uses a string as an operand in arithmetic operation. But in this case we have made the decision to support "string multiplication". This allows a user to multiply a string by a non-negative integer n and produce a new string that is concatenated with itself n-times.   
@@ -130,7 +128,6 @@ To run it:
 
 The expected output is:
   Cannot multiply a string by a negative number.
-  Error
 
 #### baddemo4
 This program assigns the integer value 0 to a variable and attempts to use said variable as the denominator in a Divide Expression. This operation produces an error because division by zero is undefined.
@@ -139,8 +136,7 @@ To run it:
   runBadDemo4
 
 The expected output is:
-  Denominator cannot be 0
-  Error
+  Cannot divide by zero.
 
 #### baddemo5
 This program declares a list of integers with 3 elements, a start index value of 0, and a value "val" to add to each element. Then the program iterates through the list using a while loop, adding val to each element.
@@ -151,8 +147,7 @@ To run it:
   runBadDemo5
 
 The expected output is:
-  AssignIdx: Out of Bounds
-  Valid (I 0)
+  Array index: 10 out of bounds 
 
 #### baddemo6
 This program produces two different errors. First it attempts to call a undefined function, and then assigns the value of the undefined function to a variable.
@@ -162,9 +157,9 @@ To run it:
   runBadDemo6
 
 The expected output is:
-  Function call to func failed: no such function.
-  Could not assign non-value to variable result.
-  Error
+  Error in binding "result": error in expression to be bound.
+    Function call failed: Name "func" is not bound to a value in current scope.
+
 
 #### baddemo7
 This program does not produce a error in the literal sense, but demonstrates possibly unexpected behavior due to the user not understanding that arguments to functions are pass-by-value only. A function is defined that takes a single parameter and increments that value by one. After calling the function, the value of the variable passed to the function has not changed. 
@@ -173,10 +168,10 @@ To run it:
   runBadDemo7
 
 The expected output is:
-  Valid (I 5)
+  5
 
 What the user might have expected:
-  Valid (I 6)
+  6
 
 #### baddemo8
 List concatenation can only be done on List values. While in Haskell a string is just a list of chars, it is not so in our language. This program produces an invalid operands to List concatenation error.
@@ -185,7 +180,7 @@ To run it:
   runBadDemo8
 
 The expected output is:
-  "Invalid operands to List Concatenation."
+  Invalid operands to List Concatenation.
 
 #### baddemo9
 Because our Lists can be mixed type the only error that will be encountered is by passing a non-list value when a List is expected. This demo illustrates calling Append on two strings and this type error causing program execution to stop. The third line of the function is never evaluated. 
@@ -193,5 +188,5 @@ To run it:
   runBadDemo9
 
 The expected output is:
-  "Error in binding "list": error in expression to be bound.
-     Invalid operands to Append to List."
+  Error in binding "list": error in expression to be bound.
+     Invalid operands to Append to List.
